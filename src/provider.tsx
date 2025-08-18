@@ -9,7 +9,14 @@ import React, {
   useState,
 } from "react";
 import { initMagic } from "./magicClient";
-import type { LoginEmailOTPType, Magic, MagicContextValue } from "./types";
+import type {
+  LoginEmailOTPType,
+  Magic,
+  MagicContextValue,
+  MarketPlaceInfo,
+  NFTInfo,
+} from "./types";
+import Web3Provider from "./Web3Provider";
 
 const MagicContext = createContext<MagicContextValue | undefined>(undefined);
 
@@ -24,10 +31,12 @@ export const MagicProvider: React.FC<{
   apiKey: string;
   pollIntervalMs?: number;
   network: string;
-}> = ({ children, apiKey, network }) => {
+  MarketPlaceInfo: MarketPlaceInfo;
+  NFTInfo: NFTInfo;
+}> = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) => {
   const [magic, setMagic] = useState<Magic | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-  const flowRef = useRef<any>()
+  const flowRef = useRef<any>();
 
   // init once
   useEffect(() => {
@@ -42,22 +51,22 @@ export const MagicProvider: React.FC<{
   }, [apiKey]);
 
   useEffect(() => {
-    if(magic) {
-      checkLoggedInMagic()
+    if (magic) {
+      checkLoggedInMagic();
     }
-  }, [magic])
+  }, [magic]);
 
   const checkLoggedInMagic = async () => {
     try {
       const logged = await magic?.user.isLoggedIn();
       setIsLoggedIn(Boolean(logged));
-      return Boolean(logged)
+      return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
     }
-    setIsLoggedIn(false)
-    return false
+    setIsLoggedIn(false);
+    return false;
   };
 
   const loginEmailOTP = async ({
@@ -69,45 +78,47 @@ export const MagicProvider: React.FC<{
     if (!magic) throw new Error("Magic not initialized");
 
     try {
-      const flow = magic.auth.loginWithEmailOTP({ email, deviceCheckUI, showUI });
-      flowRef.current = flow
+      const flow = magic.auth.loginWithEmailOTP({
+        email,
+        deviceCheckUI,
+        showUI,
+      });
+      flowRef.current = flow;
       Object.entries(events).forEach(([event, handler]) => {
         if (handler) flow.on(event as any, handler as any);
       });
 
-    
       const token = await flow;
 
       if (token) {
-        setIsLoggedIn(true)
-      };
+        setIsLoggedIn(true);
+      }
 
       return token || null;
     } catch (err) {
       console.error("login error", err);
-      events.error?.(err); 
+      events.error?.(err);
       return null;
     } finally {
-      flowRef.current = undefined
-
+      flowRef.current = undefined;
     }
   };
 
-  const verifyOTP = async (OTP:string) => {
-    if(flowRef?.current && OTP) {
-      const res = await flowRef?.current?.emit("verify-email-otp", OTP)
-      return res
+  const verifyOTP = async (OTP: string) => {
+    if (flowRef?.current && OTP) {
+      const res = await flowRef?.current?.emit("verify-email-otp", OTP);
+      return res;
     }
     console.error("verifyOTP error: must send OTP first");
-  }
+  };
 
   const cancelVerify = async () => {
-    if(flowRef?.current) {
-      const res = await flowRef?.current?.emit("cancel")
-      return res
+    if (flowRef?.current) {
+      const res = await flowRef?.current?.emit("cancel");
+      return res;
     }
     console.error("cancelVerify error");
-  }
+  };
 
   const logout = async () => {
     if (!magic) return;
@@ -139,12 +150,16 @@ export const MagicProvider: React.FC<{
       isLoggedIn,
       checkLoggedInMagic,
       verifyOTP,
-      cancelVerify
+      cancelVerify,
     }),
     [magic]
   );
 
   return (
-    <MagicContext.Provider value={value}>{children}</MagicContext.Provider>
+    <MagicContext.Provider value={value}>
+      <Web3Provider MarketPlaceInfo={MarketPlaceInfo} NFTInfo={NFTInfo}>
+        {children}
+      </Web3Provider>
+    </MagicContext.Provider>
   );
 };

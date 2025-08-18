@@ -1,15 +1,27 @@
 // src/types.ts
-import type { OAuthExtension } from '@magic-ext/oauth';
-import type { Magic as MagicBase } from 'magic-sdk';
+import type { OAuthExtension } from "@magic-ext/oauth";
+import type { Magic as MagicBase } from "magic-sdk";
 
 export type Magic = MagicBase<OAuthExtension[]>;
 
+export type NFTInfo = {
+  name: string;
+  address: string;
+  abi: any;
+};
+
+export type MarketPlaceInfo = {
+  name: string;
+  address: string;
+  abi: any;
+};
+
 export type LoginEmailOTPType = {
-    email: string;
-    showUI?: boolean;
-    deviceCheckUI?: boolean;
-    events: EssentialLoginEvents;
-  }
+  email: string;
+  showUI?: boolean;
+  deviceCheckUI?: boolean;
+  events: EssentialLoginEvents;
+};
 
 export type MagicContextValue = {
   magic: Magic | null;
@@ -18,8 +30,8 @@ export type MagicContextValue = {
   getUserMetadata: () => Promise<any | null>;
   isLoggedIn: boolean | null;
   checkLoggedInMagic: () => Promise<boolean>;
-  verifyOTP?: (OTP: string) => Promise<void>
-  cancelVerify?: () => Promise<void>
+  verifyOTP?: (OTP: string) => Promise<void>;
+  cancelVerify?: () => Promise<void>;
 };
 
 export type EssentialLoginEvents = Partial<{
