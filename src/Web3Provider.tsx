@@ -156,11 +156,9 @@ function Web3Provider({
       setOTPCount(count);
 
       if (count >= 3) {
-        setTimeout(() => {
-          setIsVerifyingOTP(false);
-          onLocked?.();
-          cancelVerify?.();
-        }, 1000);
+        setIsVerifyingOTP(false);
+        onLocked?.();
+        cancelVerify?.();
         return;
       }
 
@@ -174,7 +172,7 @@ function Web3Provider({
         setIsVerifyingOTP(false);
       }
     },
-    [verifyOTP]
+    [verifyOTP, otpCount]
   );
 
   const disconnectWallet = useCallback(async () => {
