@@ -146,7 +146,9 @@ var Web3Context = import_react.default.createContext({
   },
   magic: null,
   cancelVerify: () => Promise.resolve(),
-  checkLoggedInMagic: () => Promise.resolve(false)
+  checkLoggedInMagic: () => Promise.resolve(false),
+  resetOTPCount: () => {
+  }
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
 function Web3Provider({
@@ -176,6 +178,9 @@ function Web3Provider({
     verifyOTP,
     cancelVerify
   } = useMagic();
+  const resetOTPCount = (0, import_react.useCallback)(() => {
+    setOTPCount(0);
+  }, []);
   const loginMagic = (0, import_react.useCallback)(
     async ({
       email,
@@ -199,27 +204,6 @@ function Web3Provider({
           events: {
             "email-otp-sent": () => onOTPSent?.(),
             "invalid-email-otp": () => onVerifyOTPFail?.(),
-            // "invalid-email-otp": () => {
-            //   setOTPCount((prev) => {
-            //     const next = prev + 1;
-            //     onVerifyOTPFail?.();
-            //     console.log({ next });
-            //     if (next >= 3) {
-            //       onLocked?.();
-            //     }
-            //     return next;
-            //   });
-            //   // const count = otpCount + 1;
-            //   // setOTPCount(count);
-            //   // if (count >= 3) {
-            //   //   setIsVerifyingOTP(false);
-            //   //   onLocked?.();
-            //   //   cancelVerify?.();
-            //   //   setOTPCount(0);
-            //   //   return;
-            //   // }
-            //   // onVerifyOTPFail?.();
-            // },
             "expired-email-otp": () => onExpiredEmailOTP?.(),
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => onDone?.(result),
@@ -247,15 +231,6 @@ function Web3Provider({
     async (otp, onLocked) => {
       if (otp.length !== 6)
         return;
-      const count = otpCount + 1;
-      setOTPCount(count);
-      if (count >= 3) {
-        setIsVerifyingOTP(false);
-        onLocked?.();
-        cancelVerify?.();
-        setOTPCount(0);
-        return;
-      }
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
@@ -332,7 +307,8 @@ function Web3Provider({
       isSendingOTP,
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
-      checkLoggedInMagic
+      checkLoggedInMagic,
+      resetOTPCount
     }),
     [
       magic,
@@ -350,7 +326,8 @@ function Web3Provider({
       setIsSendingOTP,
       setIsVerifyingOTP,
       cancelVerify,
-      checkLoggedInMagic
+      checkLoggedInMagic,
+      resetOTPCount
     ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Web3Context.Provider, { value: values, children });

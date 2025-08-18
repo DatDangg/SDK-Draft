@@ -65,6 +65,7 @@ declare const useWeb3: () => {
     magic: Magic | null;
     cancelVerify: () => Promise<void>;
     checkLoggedInMagic: () => Promise<boolean>;
+    resetOTPCount: () => void;
 };
 type LoginMagicType = {
     email: string;
