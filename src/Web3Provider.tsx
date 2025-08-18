@@ -9,8 +9,7 @@ import React, {
 } from "react";
 import Cookies from "js-cookie";
 import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
-import { MarketPlaceInfo, NFTInfo } from "./types";
-import { boolean } from "yup";
+import { Magic, MarketPlaceInfo, NFTInfo } from "./types";
 
 const Web3Context = React.createContext<{
   ethersProvider: ethers.BrowserProvider | null;
@@ -25,6 +24,9 @@ const Web3Context = React.createContext<{
   setIsVerifyingOTP: React.Dispatch<React.SetStateAction<boolean>>;
   isVerifyingOTP: boolean;
   disconnectWallet: () => Promise<void>;
+  magic: Magic | null;
+  cancelVerify: () => Promise<void>;
+  checkLoggedInMagic: () => Promise<boolean>;
 }>({
   ethersProvider: null,
   ethersSigner: null,
@@ -38,6 +40,9 @@ const Web3Context = React.createContext<{
   disconnectWallet: () => Promise.resolve(),
   setIsSendingOTP: () => {},
   setIsVerifyingOTP: () => {},
+  magic: null,
+  cancelVerify: () => Promise.resolve(),
+  checkLoggedInMagic: () => Promise.resolve(false),
 });
 
 export const useWeb3 = () => useContext(Web3Context);
@@ -239,7 +244,7 @@ function Web3Provider({
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
-      cancelVerify,
+      cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
     }),
     [

@@ -62,6 +62,9 @@ declare const useWeb3: () => {
     setIsVerifyingOTP: React.Dispatch<React.SetStateAction<boolean>>;
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;
+    magic: Magic | null;
+    cancelVerify: () => Promise<void>;
+    checkLoggedInMagic: () => Promise<boolean>;
 };
 type LoginMagicType = {
     email: string;

@@ -143,7 +143,10 @@ var Web3Context = import_react.default.createContext({
   setIsSendingOTP: () => {
   },
   setIsVerifyingOTP: () => {
-  }
+  },
+  magic: null,
+  cancelVerify: () => Promise.resolve(),
+  checkLoggedInMagic: () => Promise.resolve(false)
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
 function Web3Provider({
@@ -306,7 +309,7 @@ function Web3Provider({
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
-      cancelVerify,
+      cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic
     }),
     [
