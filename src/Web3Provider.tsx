@@ -8,9 +8,9 @@ import React, {
   useState,
 } from "react";
 import Cookies from "js-cookie";
-import { MAGIC_AUTH } from "./constants/common";
-import { boolean } from "yup";
+import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
 import { MarketPlaceInfo, NFTInfo } from "./types";
+import { boolean } from "yup";
 
 const Web3Context = React.createContext<{
   ethersProvider: ethers.BrowserProvider | null;
@@ -18,15 +18,11 @@ const Web3Context = React.createContext<{
   marketContract: ethers.Contract | null;
   nftContract: ethers.Contract | null;
   loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-  verifyOTPMagic:
-    | ((
-        otp: string,
-        options: { step: string; onLocked: () => void }
-      ) => Promise<void>)
-    | null;
+  verifyOTPMagic: ((otp: string, onLocked: () => void) => Promise<void>) | null;
   isLoggedMagic: boolean;
   isSendingOTP: boolean;
   setIsSendingOTP: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsVerifyingOTP: React.Dispatch<React.SetStateAction<boolean>>;
   isVerifyingOTP: boolean;
   disconnectWallet: () => Promise<void>;
 }>({
@@ -40,7 +36,8 @@ const Web3Context = React.createContext<{
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: () => Promise.resolve(),
-  setIsSendingOTP: boolean,
+  setIsSendingOTP: () => {},
+  setIsVerifyingOTP: () => {},
 });
 
 export const useWeb3 = () => useContext(Web3Context);
@@ -51,18 +48,15 @@ type AuthenticationProviderProps = {
 
 type LoginMagicType = {
   email: string;
-  showUI: boolean;
-  deviceCheckUI: boolean;
   onSuccess?: () => void;
   onFail?: () => void;
 
   onOTPSent?: () => void;
   onVerifyOTPFail?: () => void;
-  onExpiredEmailOtp?: () => void;
+  onExpiredEmailOTP?: () => void;
   onLoginThrottled?: () => void;
   onDone?: (result?: string | null) => void;
   onError?: (reason: any) => void;
-  onClosedByUser?: () => void;
   onIdTokenCreated?: (idToken: string) => void;
 };
 
@@ -84,7 +78,9 @@ function Web3Provider({
     null
   );
   const [nftContract, setNftContract] = useState<ethers.Contract | null>(null);
-  const [isLoggedMagic, setLoggedMagic] = useState<boolean>(false);
+  const [isLoggedMagic, setLoggedMagic] = useState<boolean>(
+    Boolean(Cookies.get(LOGGED_MAGIC))
+  );
 
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
@@ -97,22 +93,20 @@ function Web3Provider({
     checkLoggedInMagic,
     logout: logoutMagic,
     verifyOTP,
+    cancelVerify,
   } = useMagic();
 
   const loginMagic = useCallback(
     async ({
       email,
-      showUI,
-      deviceCheckUI,
       onSuccess,
       onFail,
       onOTPSent,
       onVerifyOTPFail,
-      onExpiredEmailOtp,
+      onExpiredEmailOTP,
       onLoginThrottled,
       onDone,
       onError,
-      onClosedByUser,
       onIdTokenCreated,
     }: LoginMagicType) => {
       try {
@@ -120,16 +114,15 @@ function Web3Provider({
 
         const didToken = await loginEmailOTP({
           email,
-          showUI: showUI,
-          deviceCheckUI: deviceCheckUI,
+          showUI: false,
+          deviceCheckUI: false,
           events: {
             "email-otp-sent": () => onOTPSent?.(),
             "invalid-email-otp": () => onVerifyOTPFail?.(),
-            "expired-email-otp": () => onExpiredEmailOtp?.(),
+            "expired-email-otp": () => onExpiredEmailOTP?.(),
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => onDone?.(result),
             error: (reason) => onError?.(reason),
-            "closed-by-user": () => onClosedByUser?.(),
             "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken),
           },
         });
@@ -151,27 +144,28 @@ function Web3Provider({
   );
 
   const verifyOTPMagic = useCallback(
-    async (otp: string, options?: { step?: string; onLocked?: () => void }) => {
-      const step = options?.step ?? "otp";
-      if (step !== "otp" || otp.length !== 6) return;
+    async (otp: string, onLocked?: () => void) => {
+      if (otp.length !== 6) return;
 
       const count = otpCount + 1;
       setOTPCount(count);
 
       if (count >= 3) {
         setTimeout(() => {
-          setIsSendingOTP(false);
-          options?.onLocked?.();
-        }, 3000);
+          setIsVerifyingOTP(false);
+          onLocked?.();
+          cancelVerify?.();
+        }, 1000);
         return;
       }
 
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
-        setIsVerifyingOTP(false);
         return result;
       } catch {
+        setIsVerifyingOTP(false);
+      } finally {
         setIsVerifyingOTP(false);
       }
     },
@@ -217,6 +211,11 @@ function Web3Provider({
         try {
           const logged = await checkLoggedInMagic();
           setLoggedMagic(logged);
+          if (logged) {
+            Cookies.set(LOGGED_MAGIC, "true");
+          } else {
+            Cookies.remove(LOGGED_MAGIC);
+          }
         } catch (error) {}
       };
 
@@ -226,6 +225,8 @@ function Web3Provider({
 
   const values = useMemo(
     () => ({
+      magic,
+      verifyOTP,
       ethersProvider,
       ethersSigner,
       marketContract,
@@ -234,11 +235,16 @@ function Web3Provider({
       isLoggedMagic,
       disconnectWallet,
       setIsSendingOTP,
+      setIsVerifyingOTP,
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
+      cancelVerify,
+      checkLoggedInMagic,
     }),
     [
+      magic,
+      verifyOTP,
       disconnectWallet,
       ethersProvider,
       ethersSigner,
@@ -250,6 +256,9 @@ function Web3Provider({
       isSendingOTP,
       isVerifyingOTP,
       setIsSendingOTP,
+      setIsVerifyingOTP,
+      cancelVerify,
+      checkLoggedInMagic,
     ]
   );
 

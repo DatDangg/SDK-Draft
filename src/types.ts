@@ -1,8 +1,13 @@
 // src/types.ts
 import type { OAuthExtension } from "@magic-ext/oauth";
+import { ethers } from "ethers";
 import type { Magic as MagicBase } from "magic-sdk";
 
 export type Magic = MagicBase<OAuthExtension[]>;
+
+export type EtherProvider = ethers.Provider;
+
+export type EtherSigner = ethers.Signer;
 
 export type NFTInfo = {
   name: string;
@@ -41,6 +46,5 @@ export type EssentialLoginEvents = Partial<{
   "login-throttled": () => void;
   done: (result: string | null) => void;
   error: (reason: any) => void;
-  "closed-by-user": () => void;
   "Auth/id-token-created": (idToken: string) => void;
 }>;

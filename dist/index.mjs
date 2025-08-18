@@ -98,9 +98,9 @@ import Cookies from "js-cookie";
 
 // src/constants/common.ts
 var MAGIC_AUTH = "MAGIC_AUTH";
+var LOGGED_MAGIC = "LOGGED_MAGIC";
 
 // src/Web3Provider.tsx
-import { boolean } from "yup";
 import { jsx } from "react/jsx-runtime";
 var Web3Context = React.createContext({
   ethersProvider: null,
@@ -113,7 +113,10 @@ var Web3Context = React.createContext({
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: () => Promise.resolve(),
-  setIsSendingOTP: boolean
+  setIsSendingOTP: () => {
+  },
+  setIsVerifyingOTP: () => {
+  }
 });
 var useWeb3 = () => useContext(Web3Context);
 function Web3Provider({
@@ -129,7 +132,9 @@ function Web3Provider({
     null
   );
   const [nftContract, setNftContract] = useState(null);
-  const [isLoggedMagic, setLoggedMagic] = useState(false);
+  const [isLoggedMagic, setLoggedMagic] = useState(
+    Boolean(Cookies.get(LOGGED_MAGIC))
+  );
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
   const [otpCount, setOTPCount] = useState(0);
@@ -138,38 +143,35 @@ function Web3Provider({
     loginEmailOTP,
     checkLoggedInMagic,
     logout: logoutMagic,
-    verifyOTP
+    verifyOTP,
+    cancelVerify
   } = useMagic();
   const loginMagic = useCallback(
     async ({
       email,
-      showUI,
-      deviceCheckUI,
       onSuccess,
       onFail,
       onOTPSent,
       onVerifyOTPFail,
-      onExpiredEmailOtp,
+      onExpiredEmailOTP,
       onLoginThrottled,
       onDone,
       onError,
-      onClosedByUser,
       onIdTokenCreated
     }) => {
       try {
         setIsSendingOTP(true);
         const didToken = await loginEmailOTP({
           email,
-          showUI,
-          deviceCheckUI,
+          showUI: false,
+          deviceCheckUI: false,
           events: {
             "email-otp-sent": () => onOTPSent?.(),
             "invalid-email-otp": () => onVerifyOTPFail?.(),
-            "expired-email-otp": () => onExpiredEmailOtp?.(),
+            "expired-email-otp": () => onExpiredEmailOTP?.(),
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => onDone?.(result),
             error: (reason) => onError?.(reason),
-            "closed-by-user": () => onClosedByUser?.(),
             "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken)
           }
         });
@@ -189,25 +191,26 @@ function Web3Provider({
     [loginEmailOTP]
   );
   const verifyOTPMagic = useCallback(
-    async (otp, options) => {
-      const step = options?.step ?? "otp";
-      if (step !== "otp" || otp.length !== 6)
+    async (otp, onLocked) => {
+      if (otp.length !== 6)
         return;
       const count = otpCount + 1;
       setOTPCount(count);
       if (count >= 3) {
         setTimeout(() => {
-          setIsSendingOTP(false);
-          options?.onLocked?.();
-        }, 3e3);
+          setIsVerifyingOTP(false);
+          onLocked?.();
+          cancelVerify?.();
+        }, 1e3);
         return;
       }
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
-        setIsVerifyingOTP(false);
         return result;
       } catch {
+        setIsVerifyingOTP(false);
+      } finally {
         setIsVerifyingOTP(false);
       }
     },
@@ -249,6 +252,11 @@ function Web3Provider({
         try {
           const logged = await checkLoggedInMagic();
           setLoggedMagic(logged);
+          if (logged) {
+            Cookies.set(LOGGED_MAGIC, "true");
+          } else {
+            Cookies.remove(LOGGED_MAGIC);
+          }
         } catch (error) {
         }
       };
@@ -257,6 +265,8 @@ function Web3Provider({
   }, [magic]);
   const values = useMemo(
     () => ({
+      magic,
+      verifyOTP,
       ethersProvider,
       ethersSigner,
       marketContract,
@@ -265,11 +275,16 @@ function Web3Provider({
       isLoggedMagic,
       disconnectWallet,
       setIsSendingOTP,
+      setIsVerifyingOTP,
       verifyOTPMagic,
       isSendingOTP,
-      isVerifyingOTP
+      isVerifyingOTP,
+      cancelVerify,
+      checkLoggedInMagic
     }),
     [
+      magic,
+      verifyOTP,
       disconnectWallet,
       ethersProvider,
       ethersSigner,
@@ -280,7 +295,10 @@ function Web3Provider({
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
-      setIsSendingOTP
+      setIsSendingOTP,
+      setIsVerifyingOTP,
+      cancelVerify,
+      checkLoggedInMagic
     ]
   );
   return /* @__PURE__ */ jsx(Web3Context.Provider, { value: values, children });

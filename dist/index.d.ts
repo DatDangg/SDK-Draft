@@ -37,7 +37,6 @@ type EssentialLoginEvents = Partial<{
     "login-throttled": () => void;
     done: (result: string | null) => void;
     error: (reason: any) => void;
-    "closed-by-user": () => void;
     "Auth/id-token-created": (idToken: string) => void;
 }>;
 
@@ -56,29 +55,24 @@ declare const useWeb3: () => {
     marketContract: ethers.Contract | null;
     nftContract: ethers.Contract | null;
     loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-    verifyOTPMagic: ((otp: string, options: {
-        step: string;
-        onLocked: () => void;
-    }) => Promise<void>) | null;
+    verifyOTPMagic: ((otp: string, onLocked: () => void) => Promise<void>) | null;
     isLoggedMagic: boolean;
     isSendingOTP: boolean;
     setIsSendingOTP: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsVerifyingOTP: React.Dispatch<React.SetStateAction<boolean>>;
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;
 };
 type LoginMagicType = {
     email: string;
-    showUI: boolean;
-    deviceCheckUI: boolean;
     onSuccess?: () => void;
     onFail?: () => void;
     onOTPSent?: () => void;
     onVerifyOTPFail?: () => void;
-    onExpiredEmailOtp?: () => void;
+    onExpiredEmailOTP?: () => void;
     onLoginThrottled?: () => void;
     onDone?: (result?: string | null) => void;
     onError?: (reason: any) => void;
-    onClosedByUser?: () => void;
     onIdTokenCreated?: (idToken: string) => void;
 };
 

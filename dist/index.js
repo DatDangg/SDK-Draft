@@ -125,9 +125,9 @@ var import_js_cookie = __toESM(require("js-cookie"));
 
 // src/constants/common.ts
 var MAGIC_AUTH = "MAGIC_AUTH";
+var LOGGED_MAGIC = "LOGGED_MAGIC";
 
 // src/Web3Provider.tsx
-var import_yup = require("yup");
 var import_jsx_runtime = require("react/jsx-runtime");
 var Web3Context = import_react.default.createContext({
   ethersProvider: null,
@@ -140,7 +140,10 @@ var Web3Context = import_react.default.createContext({
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: () => Promise.resolve(),
-  setIsSendingOTP: import_yup.boolean
+  setIsSendingOTP: () => {
+  },
+  setIsVerifyingOTP: () => {
+  }
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
 function Web3Provider({
@@ -156,7 +159,9 @@ function Web3Provider({
     null
   );
   const [nftContract, setNftContract] = (0, import_react.useState)(null);
-  const [isLoggedMagic, setLoggedMagic] = (0, import_react.useState)(false);
+  const [isLoggedMagic, setLoggedMagic] = (0, import_react.useState)(
+    Boolean(import_js_cookie.default.get(LOGGED_MAGIC))
+  );
   const [isSendingOTP, setIsSendingOTP] = (0, import_react.useState)(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = (0, import_react.useState)(false);
   const [otpCount, setOTPCount] = (0, import_react.useState)(0);
@@ -165,38 +170,35 @@ function Web3Provider({
     loginEmailOTP,
     checkLoggedInMagic,
     logout: logoutMagic,
-    verifyOTP
+    verifyOTP,
+    cancelVerify
   } = useMagic();
   const loginMagic = (0, import_react.useCallback)(
     async ({
       email,
-      showUI,
-      deviceCheckUI,
       onSuccess,
       onFail,
       onOTPSent,
       onVerifyOTPFail,
-      onExpiredEmailOtp,
+      onExpiredEmailOTP,
       onLoginThrottled,
       onDone,
       onError,
-      onClosedByUser,
       onIdTokenCreated
     }) => {
       try {
         setIsSendingOTP(true);
         const didToken = await loginEmailOTP({
           email,
-          showUI,
-          deviceCheckUI,
+          showUI: false,
+          deviceCheckUI: false,
           events: {
             "email-otp-sent": () => onOTPSent?.(),
             "invalid-email-otp": () => onVerifyOTPFail?.(),
-            "expired-email-otp": () => onExpiredEmailOtp?.(),
+            "expired-email-otp": () => onExpiredEmailOTP?.(),
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => onDone?.(result),
             error: (reason) => onError?.(reason),
-            "closed-by-user": () => onClosedByUser?.(),
             "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken)
           }
         });
@@ -216,25 +218,26 @@ function Web3Provider({
     [loginEmailOTP]
   );
   const verifyOTPMagic = (0, import_react.useCallback)(
-    async (otp, options) => {
-      const step = options?.step ?? "otp";
-      if (step !== "otp" || otp.length !== 6)
+    async (otp, onLocked) => {
+      if (otp.length !== 6)
         return;
       const count = otpCount + 1;
       setOTPCount(count);
       if (count >= 3) {
         setTimeout(() => {
-          setIsSendingOTP(false);
-          options?.onLocked?.();
-        }, 3e3);
+          setIsVerifyingOTP(false);
+          onLocked?.();
+          cancelVerify?.();
+        }, 1e3);
         return;
       }
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
-        setIsVerifyingOTP(false);
         return result;
       } catch {
+        setIsVerifyingOTP(false);
+      } finally {
         setIsVerifyingOTP(false);
       }
     },
@@ -276,6 +279,11 @@ function Web3Provider({
         try {
           const logged = await checkLoggedInMagic();
           setLoggedMagic(logged);
+          if (logged) {
+            import_js_cookie.default.set(LOGGED_MAGIC, "true");
+          } else {
+            import_js_cookie.default.remove(LOGGED_MAGIC);
+          }
         } catch (error) {
         }
       };
@@ -284,6 +292,8 @@ function Web3Provider({
   }, [magic]);
   const values = (0, import_react.useMemo)(
     () => ({
+      magic,
+      verifyOTP,
       ethersProvider,
       ethersSigner,
       marketContract,
@@ -292,11 +302,16 @@ function Web3Provider({
       isLoggedMagic,
       disconnectWallet,
       setIsSendingOTP,
+      setIsVerifyingOTP,
       verifyOTPMagic,
       isSendingOTP,
-      isVerifyingOTP
+      isVerifyingOTP,
+      cancelVerify,
+      checkLoggedInMagic
     }),
     [
+      magic,
+      verifyOTP,
       disconnectWallet,
       ethersProvider,
       ethersSigner,
@@ -307,7 +322,10 @@ function Web3Provider({
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
-      setIsSendingOTP
+      setIsSendingOTP,
+      setIsVerifyingOTP,
+      cancelVerify,
+      checkLoggedInMagic
     ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Web3Context.Provider, { value: values, children });
