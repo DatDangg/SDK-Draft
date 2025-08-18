@@ -55,7 +55,7 @@ declare const useWeb3: () => {
     marketContract: ethers.Contract | null;
     nftContract: ethers.Contract | null;
     loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-    verifyOTPMagic: ((otp: string, onLocked: () => void) => Promise<void>) | null;
+    verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
     isLoggedMagic: boolean;
     isSendingOTP: boolean;
     setIsSendingOTP: React.Dispatch<React.SetStateAction<boolean>>;
@@ -77,6 +77,7 @@ type LoginMagicType = {
     onDone?: (result?: string | null) => void;
     onError?: (reason: any) => void;
     onIdTokenCreated?: (idToken: string) => void;
+    onLocked?: () => void;
 };
 
 declare function useIsLoggedIn(pollInterval?: number): boolean | null;

@@ -17,7 +17,9 @@ const Web3Context = React.createContext<{
   marketContract: ethers.Contract | null;
   nftContract: ethers.Contract | null;
   loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-  verifyOTPMagic: ((otp: string, onLocked: () => void) => Promise<void>) | null;
+  verifyOTPMagic:
+    | ((otp: string, onLocked?: () => void) => Promise<void>)
+    | null;
   isLoggedMagic: boolean;
   isSendingOTP: boolean;
   setIsSendingOTP: React.Dispatch<React.SetStateAction<boolean>>;
@@ -47,15 +49,10 @@ const Web3Context = React.createContext<{
 
 export const useWeb3 = () => useContext(Web3Context);
 
-type AuthenticationProviderProps = {
-  children: React.ReactNode;
-};
-
 type LoginMagicType = {
   email: string;
   onSuccess?: () => void;
   onFail?: () => void;
-
   onOTPSent?: () => void;
   onVerifyOTPFail?: () => void;
   onExpiredEmailOTP?: () => void;
@@ -63,6 +60,7 @@ type LoginMagicType = {
   onDone?: (result?: string | null) => void;
   onError?: (reason: any) => void;
   onIdTokenCreated?: (idToken: string) => void;
+  onLocked?: () => void;
 };
 
 function Web3Provider({
@@ -113,6 +111,7 @@ function Web3Provider({
       onDone,
       onError,
       onIdTokenCreated,
+      onLocked,
     }: LoginMagicType) => {
       try {
         setIsSendingOTP(true);
@@ -124,6 +123,29 @@ function Web3Provider({
           events: {
             "email-otp-sent": () => onOTPSent?.(),
             "invalid-email-otp": () => onVerifyOTPFail?.(),
+            // "invalid-email-otp": () => {
+            //   setOTPCount((prev) => {
+            //     const next = prev + 1;
+            //     onVerifyOTPFail?.();
+            //     console.log({ next });
+            //     if (next >= 3) {
+            //       onLocked?.();
+            //     }
+            //     return next;
+            //   });
+            //   // const count = otpCount + 1;
+            //   // setOTPCount(count);
+
+            //   // if (count >= 3) {
+            //   //   setIsVerifyingOTP(false);
+            //   //   onLocked?.();
+            //   //   cancelVerify?.();
+            //   //   setOTPCount(0);
+            //   //   return;
+            //   // }
+            //   // onVerifyOTPFail?.();
+            // },
+
             "expired-email-otp": () => onExpiredEmailOTP?.(),
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => onDone?.(result),
@@ -152,22 +174,22 @@ function Web3Provider({
   const verifyOTPMagic = useCallback(
     async (otp: string, onLocked?: () => void) => {
       if (otp.length !== 6) return;
+      const count = otpCount + 1;
+      setOTPCount(count);
+
+      if (count >= 3) {
+        setIsVerifyingOTP(false);
+        onLocked?.();
+        cancelVerify?.();
+        setOTPCount(0);
+        return;
+      }
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
         return result;
       } catch {
         setIsVerifyingOTP(false);
-        const count = otpCount + 1;
-        setOTPCount(count);
-
-        if (count >= 3) {
-          setIsVerifyingOTP(false);
-          onLocked?.();
-          cancelVerify?.();
-          setOTPCount(0);
-          return;
-        }
       } finally {
         setIsVerifyingOTP(false);
       }

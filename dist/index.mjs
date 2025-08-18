@@ -160,7 +160,8 @@ function Web3Provider({
       onLoginThrottled,
       onDone,
       onError,
-      onIdTokenCreated
+      onIdTokenCreated,
+      onLocked
     }) => {
       try {
         setIsSendingOTP(true);
@@ -171,6 +172,27 @@ function Web3Provider({
           events: {
             "email-otp-sent": () => onOTPSent?.(),
             "invalid-email-otp": () => onVerifyOTPFail?.(),
+            // "invalid-email-otp": () => {
+            //   setOTPCount((prev) => {
+            //     const next = prev + 1;
+            //     onVerifyOTPFail?.();
+            //     console.log({ next });
+            //     if (next >= 3) {
+            //       onLocked?.();
+            //     }
+            //     return next;
+            //   });
+            //   // const count = otpCount + 1;
+            //   // setOTPCount(count);
+            //   // if (count >= 3) {
+            //   //   setIsVerifyingOTP(false);
+            //   //   onLocked?.();
+            //   //   cancelVerify?.();
+            //   //   setOTPCount(0);
+            //   //   return;
+            //   // }
+            //   // onVerifyOTPFail?.();
+            // },
             "expired-email-otp": () => onExpiredEmailOTP?.(),
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => onDone?.(result),
@@ -185,6 +207,7 @@ function Web3Provider({
         setLoggedMagic(true);
         onSuccess?.();
         setIsSendingOTP(false);
+        setOTPCount(0);
       } catch (err) {
         const msg = err?.message;
         onFail?.();
@@ -197,21 +220,21 @@ function Web3Provider({
     async (otp, onLocked) => {
       if (otp.length !== 6)
         return;
+      const count = otpCount + 1;
+      setOTPCount(count);
+      if (count >= 3) {
+        setIsVerifyingOTP(false);
+        onLocked?.();
+        cancelVerify?.();
+        setOTPCount(0);
+        return;
+      }
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
         return result;
       } catch {
         setIsVerifyingOTP(false);
-        const count = otpCount + 1;
-        setOTPCount(count);
-        if (count >= 3) {
-          setIsVerifyingOTP(false);
-          onLocked?.();
-          cancelVerify?.();
-          setOTPCount(0);
-          return;
-        }
       } finally {
         setIsVerifyingOTP(false);
       }
