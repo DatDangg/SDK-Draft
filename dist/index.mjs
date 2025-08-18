@@ -197,20 +197,21 @@ function Web3Provider({
     async (otp, onLocked) => {
       if (otp.length !== 6)
         return;
-      const count = otpCount + 1;
-      setOTPCount(count);
-      if (count >= 3) {
-        setIsVerifyingOTP(false);
-        onLocked?.();
-        cancelVerify?.();
-        return;
-      }
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
         return result;
       } catch {
         setIsVerifyingOTP(false);
+        const count = otpCount + 1;
+        setOTPCount(count);
+        if (count >= 3) {
+          setIsVerifyingOTP(false);
+          onLocked?.();
+          cancelVerify?.();
+          setOTPCount(0);
+          return;
+        }
       } finally {
         setIsVerifyingOTP(false);
       }
