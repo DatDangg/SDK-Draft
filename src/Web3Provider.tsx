@@ -121,6 +121,7 @@ function Web3Provider({
     }: LoginMagicType) => {
       try {
         setIsSendingOTP(true);
+        console.log("loginMagic");
 
         const didToken = await loginEmailOTP({
           email,
@@ -184,7 +185,11 @@ function Web3Provider({
   );
 
   const disconnectWallet = useCallback(async () => {
+    console.log("disconnectWallet 1");
+
     if (magic) {
+      console.log("disconnectWallet 2");
+
       await logoutMagic();
       setLoggedMagic(false);
       Cookies.remove(MAGIC_AUTH);

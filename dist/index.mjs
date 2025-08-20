@@ -170,6 +170,7 @@ function Web3Provider({
     }) => {
       try {
         setIsSendingOTP(true);
+        console.log("loginMagic");
         const didToken = await loginEmailOTP({
           email,
           showUI: false,
@@ -217,7 +218,9 @@ function Web3Provider({
     [verifyOTP, otpCount]
   );
   const disconnectWallet = useCallback(async () => {
+    console.log("disconnectWallet 1");
     if (magic) {
+      console.log("disconnectWallet 2");
       await logoutMagic();
       setLoggedMagic(false);
       Cookies.remove(MAGIC_AUTH);
