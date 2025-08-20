@@ -117,12 +117,9 @@ function Web3Provider({
       onDone,
       onError,
       onIdTokenCreated,
-      onLocked,
     }: LoginMagicType) => {
       try {
         setIsSendingOTP(true);
-        console.log("loginMagic");
-
         const didToken = await loginEmailOTP({
           email,
           showUI: false,
@@ -159,18 +156,6 @@ function Web3Provider({
   const verifyOTPMagic = useCallback(
     async (otp: string, onLocked?: () => void) => {
       if (otp.length !== 6) return;
-      // setOTPCount((prev) => {
-      //   const next = prev + 1;
-
-      //   if (next >= 3) {
-      //     setIsVerifyingOTP(false);
-      //     onLocked?.();
-      //     cancelVerify?.();
-      //     return 0;
-      //   }
-
-      //   return next;
-      // });
       try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
@@ -185,14 +170,11 @@ function Web3Provider({
   );
 
   const disconnectWallet = useCallback(async () => {
-    console.log("disconnectWallet 1");
-
     if (magic) {
-      console.log("disconnectWallet 2");
-
       await logoutMagic();
       setLoggedMagic(false);
       Cookies.remove(MAGIC_AUTH);
+      Cookies.remove(LOGGED_MAGIC);
     }
   }, [magic, logoutMagic]);
 
