@@ -188,7 +188,11 @@ function Web3Provider({
               setIsVerifyingOTP(false);
               onExpiredEmailOTP?.();
             },
-            "login-throttled": () => onLoginThrottled?.(),
+            "login-throttled": () => {
+              onLoginThrottled?.();
+              setIsSendingOTP(false);
+              setIsVerifyingOTP(false);
+            },
             done: (result) => {
               setIsSendingOTP(false);
               setIsVerifyingOTP(false);
@@ -210,7 +214,6 @@ function Web3Provider({
         onSuccess?.();
         setOTPCount(0);
       } catch (err) {
-        const msg = err?.message;
         onFail?.();
         setIsSendingOTP(false);
       }
@@ -218,7 +221,7 @@ function Web3Provider({
     [loginEmailOTP]
   );
   const verifyOTPMagic = useCallback(
-    async (otp, onLocked) => {
+    async (otp) => {
       if (otp.length !== 6)
         return;
       setIsVerifyingOTP(true);
@@ -431,7 +434,7 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     if (!magic)
       return null;
     try {
-      const idToken = await magic.user.getIdToken({ lifespan: 900 });
+      const idToken = await magic.user.getIdToken();
       return idToken;
     } catch (err) {
       return null;

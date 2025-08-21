@@ -141,7 +141,11 @@ function Web3Provider({
               setIsVerifyingOTP(false);
               onExpiredEmailOTP?.()
             },
-            "login-throttled": () => onLoginThrottled?.(),
+            "login-throttled": () => {
+              onLoginThrottled?.()
+              setIsSendingOTP(false);
+              setIsVerifyingOTP(false);
+            },
             done: (result) => {
               setIsSendingOTP(false);
               setIsVerifyingOTP(false);
@@ -163,7 +167,6 @@ function Web3Provider({
         onSuccess?.();
         setOTPCount(0);
       } catch (err: any) {
-        const msg = err?.message;
         onFail?.();
         setIsSendingOTP(false);
       }
@@ -172,7 +175,7 @@ function Web3Provider({
   );
 
   const verifyOTPMagic = useCallback(
-    async (otp: string, onLocked?: () => void) => {
+    async (otp: string) => {
       if (otp.length !== 6) return;
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
