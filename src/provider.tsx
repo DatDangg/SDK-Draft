@@ -28,12 +28,9 @@ export const useMagic = (): MagicContextValue => {
 
 export const MagicProvider: React.FC<{
   children: ReactNode;
-  apiKey: string;
-  pollIntervalMs?: number;
-  network: string;
   MarketPlaceInfo: MarketPlaceInfo;
   NFTInfo: NFTInfo;
-}> = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) => {
+}> = ({ children, MarketPlaceInfo, NFTInfo }) => {
   const [magic, setMagic] = useState<Magic | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const flowRef = useRef<any>();
@@ -41,14 +38,14 @@ export const MagicProvider: React.FC<{
   // init once
   useEffect(() => {
     try {
-      const m = initMagic(apiKey, network);
+      const m = initMagic('', '');
       setMagic(m);
     } catch (err) {
       // don't break apps; consumer may want to handle absence of magic
       console.warn("Magic init warning:", (err as Error).message);
       setMagic(null);
     }
-  }, [apiKey]);
+  }, []);
 
   useEffect(() => {
     if (magic) {

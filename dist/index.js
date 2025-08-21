@@ -357,19 +357,19 @@ var useMagic = () => {
     throw new Error("useMagic must be used within MagicProvider");
   return ctx;
 };
-var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) => {
+var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
   const [magic, setMagic] = (0, import_react2.useState)(null);
   const [isLoggedIn, setIsLoggedIn] = (0, import_react2.useState)(null);
   const flowRef = (0, import_react2.useRef)();
   (0, import_react2.useEffect)(() => {
     try {
-      const m = initMagic(apiKey, network);
+      const m = initMagic("", "");
       setMagic(m);
     } catch (err) {
       console.warn("Magic init warning:", err.message);
       setMagic(null);
     }
-  }, [apiKey]);
+  }, []);
   (0, import_react2.useEffect)(() => {
     if (magic) {
       checkLoggedInMagic();

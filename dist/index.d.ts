@@ -43,9 +43,6 @@ type EssentialLoginEvents = Partial<{
 
 declare const MagicProvider: React.FC<{
     children: ReactNode;
-    apiKey: string;
-    pollIntervalMs?: number;
-    network: string;
     MarketPlaceInfo: MarketPlaceInfo;
     NFTInfo: NFTInfo;
 }>;
