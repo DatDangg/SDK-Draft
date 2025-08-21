@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
 import { OAuthExtension } from '@magic-ext/oauth';
+import { BigNumberish, ethers } from 'ethers';
 import { Magic as Magic$1 } from 'magic-sdk';
-import { ethers } from 'ethers';
 
 type Magic = Magic$1<OAuthExtension[]>;
 type NFTInfo = {
@@ -30,6 +30,7 @@ type MagicContextValue = {
     verifyOTP?: (OTP: string) => Promise<void>;
     cancelVerify?: () => Promise<void>;
     getUserIdToken: () => Promise<string | null>;
+    convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 type EssentialLoginEvents = Partial<{
     "email-otp-sent": () => void;
@@ -40,6 +41,7 @@ type EssentialLoginEvents = Partial<{
     error: (reason: any) => void;
     "Auth/id-token-created": (idToken: string) => void;
 }>;
+type EthUnit = "wei" | "kwei" | "babbage" | "mwei" | "lovelace" | "gwei" | "shannon" | "szabo" | "finney" | "ether" | number;
 
 declare const MagicProvider: React.FC<{
     children: ReactNode;

@@ -192,7 +192,8 @@ function Web3Provider({
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
-    getUserIdToken
+    getUserIdToken,
+    convertBalance
   } = useMagic();
   const resetOTPCount = (0, import_react.useCallback)(() => {
     setOTPCount(0);
@@ -377,15 +378,6 @@ var useMagic = () => {
     throw new Error("useMagic must be used within MagicProvider");
   return ctx;
 };
-function convertBalance(value, fromUnit, toUnit) {
-  const fromDecimals = typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
-  const toDecimals = typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
-  if (fromDecimals == null || toDecimals == null) {
-    throw new Error("\u0110\u01A1n v\u1ECB kh\xF4ng h\u1EE3p l\u1EC7");
-  }
-  const inWei = (0, import_ethers2.parseUnits)(value.toString(), fromDecimals);
-  return (0, import_ethers2.formatUnits)(inWei, toDecimals);
-}
 var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
   const [magic, setMagic] = (0, import_react2.useState)(null);
   const [isLoggedIn, setIsLoggedIn] = (0, import_react2.useState)(null);
@@ -472,6 +464,15 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       console.error("logout error", err);
     }
   };
+  const convertBalance = (value2, fromUnit, toUnit) => {
+    const fromDecimals = typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
+    const toDecimals = typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
+    if (fromDecimals == null || toDecimals == null) {
+      throw new Error("\u0110\u01A1n v\u1ECB kh\xF4ng h\u1EE3p l\u1EC7");
+    }
+    const inWei = (0, import_ethers2.parseUnits)(value2.toString(), fromDecimals);
+    return (0, import_ethers2.formatUnits)(inWei, toDecimals);
+  };
   const getUserMetadata = async () => {
     if (!magic)
       return null;
@@ -503,7 +504,8 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       checkLoggedInMagic,
       verifyOTP,
       cancelVerify,
-      getUserIdToken
+      getUserIdToken,
+      convertBalance
     }),
     [magic]
   );

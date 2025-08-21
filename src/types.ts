@@ -1,6 +1,6 @@
 // src/types.ts
 import type { OAuthExtension } from "@magic-ext/oauth";
-import { ethers } from "ethers";
+import { BigNumberish, ethers } from "ethers";
 import type { Magic as MagicBase } from "magic-sdk";
 
 export type Magic = MagicBase<OAuthExtension[]>;
@@ -38,6 +38,7 @@ export type MagicContextValue = {
   verifyOTP?: (OTP: string) => Promise<void>;
   cancelVerify?: () => Promise<void>;
   getUserIdToken: () => Promise<string | null>
+convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 
 export type EssentialLoginEvents = Partial<{

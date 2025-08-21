@@ -1,4 +1,4 @@
-import { convertBalance, useMagic } from "./provider";
+import { useMagic } from "./provider";
 import { ethers } from "ethers";
 import React, {
   useContext,
@@ -103,6 +103,8 @@ function Web3Provider({
     verifyOTP,
     cancelVerify,
     getUserIdToken,
+    convertBalance
+    
   } = useMagic();
 
   const resetOTPCount = useCallback(() => {
