@@ -9,14 +9,17 @@ import React, {
   useState,
 } from "react";
 import { initMagic } from "./magicClient";
-import type {
-  LoginEmailOTPType,
-  Magic,
-  MagicContextValue,
-  MarketPlaceInfo,
-  NFTInfo,
+import {
+  UNIT_DECIMALS,
+  type EthUnit,
+  type LoginEmailOTPType,
+  type Magic,
+  type MagicContextValue,
+  type MarketPlaceInfo,
+  type NFTInfo,
 } from "./types";
 import Web3Provider from "./Web3Provider";
+import { parseUnits, formatUnits, BigNumberish } from "ethers";
 
 const MagicContext = createContext<MagicContextValue | undefined>(undefined);
 
@@ -25,6 +28,22 @@ export const useMagic = (): MagicContextValue => {
   if (!ctx) throw new Error("useMagic must be used within MagicProvider");
   return ctx;
 };
+
+export function convertBalance(
+  value: BigNumberish,
+  fromUnit: EthUnit,
+  toUnit: EthUnit
+): string {
+  const fromDecimals = typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
+  const toDecimals   = typeof toUnit   === "number" ? toUnit   : UNIT_DECIMALS[toUnit];
+
+  if (fromDecimals == null || toDecimals == null) {
+    throw new Error("Đơn vị không hợp lệ");
+  }
+
+  const inWei = parseUnits(value.toString(), fromDecimals);
+  return formatUnits(inWei, toDecimals);
+}
 
 export const MagicProvider: React.FC<{
   children: ReactNode;

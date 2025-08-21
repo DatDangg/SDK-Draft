@@ -49,3 +49,24 @@ export type EssentialLoginEvents = Partial<{
   error: (reason: any) => void;
   "Auth/id-token-created": (idToken: string) => void;
 }>;
+
+
+export type EthUnit =
+  | "wei"
+  | "kwei" | "babbage"
+  | "mwei" | "lovelace"
+  | "gwei" | "shannon"
+  | "szabo"
+  | "finney"
+  | "ether"
+  | number;
+
+export const UNIT_DECIMALS: Record<Exclude<EthUnit, number>, number> = {
+  wei: 0,
+  kwei: 3, babbage: 3,
+  mwei: 6, lovelace: 6,
+  gwei: 9, shannon: 9,
+  szabo: 12,
+  finney: 15,
+  ether: 18,
+};

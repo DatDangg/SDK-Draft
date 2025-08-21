@@ -118,6 +118,20 @@ function getMagic() {
   return instance;
 }
 
+// src/types.ts
+var UNIT_DECIMALS = {
+  wei: 0,
+  kwei: 3,
+  babbage: 3,
+  mwei: 6,
+  lovelace: 6,
+  gwei: 9,
+  shannon: 9,
+  szabo: 12,
+  finney: 15,
+  ether: 18
+};
+
 // src/Web3Provider.tsx
 var import_ethers = require("ethers");
 var import_react = __toESM(require("react"));
@@ -324,7 +338,8 @@ function Web3Provider({
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
       resetOTPCount,
-      getUserIdToken
+      getUserIdToken,
+      convertBalance
     }),
     [
       magic,
@@ -344,7 +359,8 @@ function Web3Provider({
       cancelVerify,
       checkLoggedInMagic,
       resetOTPCount,
-      getUserIdToken
+      getUserIdToken,
+      convertBalance
     ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Web3Context.Provider, { value: values, children });
@@ -352,6 +368,7 @@ function Web3Provider({
 var Web3Provider_default = Web3Provider;
 
 // src/provider.tsx
+var import_ethers2 = require("ethers");
 var import_jsx_runtime2 = require("react/jsx-runtime");
 var MagicContext = (0, import_react2.createContext)(void 0);
 var useMagic = () => {
@@ -360,6 +377,15 @@ var useMagic = () => {
     throw new Error("useMagic must be used within MagicProvider");
   return ctx;
 };
+function convertBalance(value, fromUnit, toUnit) {
+  const fromDecimals = typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
+  const toDecimals = typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
+  if (fromDecimals == null || toDecimals == null) {
+    throw new Error("\u0110\u01A1n v\u1ECB kh\xF4ng h\u1EE3p l\u1EC7");
+  }
+  const inWei = (0, import_ethers2.parseUnits)(value.toString(), fromDecimals);
+  return (0, import_ethers2.formatUnits)(inWei, toDecimals);
+}
 var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
   const [magic, setMagic] = (0, import_react2.useState)(null);
   const [isLoggedIn, setIsLoggedIn] = (0, import_react2.useState)(null);

@@ -1,4 +1,4 @@
-import { useMagic } from "./provider";
+import { convertBalance, useMagic } from "./provider";
 import { ethers } from "ethers";
 import React, {
   useContext,
@@ -255,7 +255,8 @@ function Web3Provider({
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
       resetOTPCount,
-      getUserIdToken
+      getUserIdToken,
+      convertBalance
     }),
     [
       magic,
@@ -275,7 +276,8 @@ function Web3Provider({
       cancelVerify,
       checkLoggedInMagic,
       resetOTPCount,
-      getUserIdToken
+      getUserIdToken,
+      convertBalance
     ]
   );
 
