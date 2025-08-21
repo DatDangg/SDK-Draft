@@ -38,7 +38,7 @@ export type MagicContextValue = {
   verifyOTP?: (OTP: string) => Promise<void>;
   cancelVerify?: () => Promise<void>;
   getUserIdToken: () => Promise<string | null>
-convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
+  convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 
 export type EssentialLoginEvents = Partial<{

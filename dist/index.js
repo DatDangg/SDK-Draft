@@ -163,7 +163,8 @@ var Web3Context = import_react.default.createContext({
   checkLoggedInMagic: () => Promise.resolve(false),
   resetOTPCount: () => {
   },
-  getUserIdToken: () => Promise.resolve(null)
+  getUserIdToken: () => Promise.resolve(null),
+  convertBalance: () => ""
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
 function Web3Provider({

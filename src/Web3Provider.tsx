@@ -1,5 +1,5 @@
 import { useMagic } from "./provider";
-import { ethers } from "ethers";
+import { BigNumberish, ethers } from "ethers";
 import React, {
   useContext,
   useCallback,
@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import Cookies from "js-cookie";
 import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
-import { Magic, MarketPlaceInfo, NFTInfo } from "./types";
+import { EthUnit, Magic, MarketPlaceInfo, NFTInfo } from "./types";
 import { string } from "yup";
 
 const Web3Context = React.createContext<{
@@ -32,6 +32,7 @@ const Web3Context = React.createContext<{
   checkLoggedInMagic: () => Promise<boolean>;
   resetOTPCount: () => void;
   getUserIdToken: () => Promise<string | null>
+  convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 }>({
   ethersProvider: null,
   ethersSigner: null,
@@ -50,6 +51,7 @@ const Web3Context = React.createContext<{
   checkLoggedInMagic: () => Promise.resolve(false),
   resetOTPCount: () => {},
   getUserIdToken: () => Promise.resolve(null),
+  convertBalance: () => "",
 });
 
 export const useWeb3 = () => useContext(Web3Context);
@@ -104,7 +106,6 @@ function Web3Provider({
     cancelVerify,
     getUserIdToken,
     convertBalance
-    
   } = useMagic();
 
   const resetOTPCount = useCallback(() => {

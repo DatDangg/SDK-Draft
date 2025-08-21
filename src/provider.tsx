@@ -130,23 +130,23 @@ export const MagicProvider: React.FC<{
     }
   };
 
-const convertBalance = (
-  value: BigNumberish,
-  fromUnit: EthUnit,
-  toUnit: EthUnit
-): string => {
-  const fromDecimals =
-    typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
-  const toDecimals =
-    typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
+  const convertBalance = (
+    value: BigNumberish,
+    fromUnit: EthUnit,
+    toUnit: EthUnit
+  ): string => {
+    const fromDecimals =
+      typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
+    const toDecimals =
+      typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
 
-  if (fromDecimals == null || toDecimals == null) {
-    throw new Error("Đơn vị không hợp lệ");
-  }
+    if (fromDecimals == null || toDecimals == null) {
+      throw new Error("Đơn vị không hợp lệ");
+    }
 
-  const inWei = parseUnits(value.toString(), fromDecimals);
-  return formatUnits(inWei, toDecimals);
-};
+    const inWei = parseUnits(value.toString(), fromDecimals);
+    return formatUnits(inWei, toDecimals);
+  };
 
   const getUserMetadata = async () => {
     if (!magic) return null;

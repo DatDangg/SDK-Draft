@@ -67,6 +67,7 @@ declare const useWeb3: () => {
     checkLoggedInMagic: () => Promise<boolean>;
     resetOTPCount: () => void;
     getUserIdToken: () => Promise<string | null>;
+    convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 type LoginMagicType = {
     email: string;
