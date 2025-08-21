@@ -149,7 +149,7 @@ var Web3Context = import_react.default.createContext({
   checkLoggedInMagic: () => Promise.resolve(false),
   resetOTPCount: () => {
   },
-  getUserIdToken: () => Promise.resolve("")
+  getUserIdToken: () => Promise.resolve(null)
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
 function Web3Provider({
@@ -456,7 +456,7 @@ var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) =>
     if (!magic)
       return null;
     try {
-      const idToken = await magic.user.getIdToken();
+      const idToken = await magic.user.getIdToken({ lifespan: 900 });
       return idToken;
     } catch (err) {
       return null;

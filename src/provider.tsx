@@ -144,7 +144,7 @@ export const MagicProvider: React.FC<{
   const getUserIdToken = async () => {
     if (!magic) return null;
     try {
-      const idToken = await magic.user.getIdToken();
+      const idToken = await magic.user.getIdToken({ lifespan: 900 });
       return idToken
     } catch (err) {
       return null

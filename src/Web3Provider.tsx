@@ -49,7 +49,7 @@ const Web3Context = React.createContext<{
   cancelVerify: () => Promise.resolve(),
   checkLoggedInMagic: () => Promise.resolve(false),
   resetOTPCount: () => {},
-  getUserIdToken: () => Promise.resolve(""),
+  getUserIdToken: () => Promise.resolve(null),
 });
 
 export const useWeb3 = () => useContext(Web3Context);
