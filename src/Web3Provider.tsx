@@ -125,23 +125,36 @@ function Web3Provider({
           showUI: false,
           deviceCheckUI: false,
           events: {
-            "email-otp-sent": () => onOTPSent?.(),
-            "invalid-email-otp": () => onVerifyOTPFail?.(),
-            "expired-email-otp": () => onExpiredEmailOTP?.(),
+            "email-otp-sent": () => {
+              setIsSendingOTP(false);
+              onOTPSent?.()
+            },
+            "invalid-email-otp": () => {
+              setIsVerifyingOTP(false);
+              onVerifyOTPFail?.()
+            },
+            "expired-email-otp": () => {
+              setIsVerifyingOTP(false);
+              onExpiredEmailOTP?.()
+            },
             "login-throttled": () => onLoginThrottled?.(),
-            done: (result) => onDone?.(result),
-            error: (reason) => onError?.(reason),
+            done: (result) => {
+              setIsVerifyingOTP(false);
+              onDone?.(result)
+            },
+            error: (reason) => {
+              setIsVerifyingOTP(false);
+              onError?.(reason)
+            },
             "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken),
           },
         });
         if (!didToken) {
           return;
         }
-
         Cookies.set(MAGIC_AUTH, JSON.stringify({ token: didToken }));
         setLoggedMagic(true);
         onSuccess?.();
-        setIsSendingOTP(false);
         setOTPCount(0);
       } catch (err: any) {
         const msg = err?.message;
@@ -155,15 +168,9 @@ function Web3Provider({
   const verifyOTPMagic = useCallback(
     async (otp: string, onLocked?: () => void) => {
       if (otp.length !== 6) return;
-      try {
         setIsVerifyingOTP(true);
         const result = await verifyOTP?.(otp);
         return result;
-      } catch {
-        setIsVerifyingOTP(false);
-      } finally {
-        setIsVerifyingOTP(false);
-      }
     },
     [verifyOTP, otpCount]
   );
