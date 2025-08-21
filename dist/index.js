@@ -148,7 +148,8 @@ var Web3Context = import_react.default.createContext({
   cancelVerify: () => Promise.resolve(),
   checkLoggedInMagic: () => Promise.resolve(false),
   resetOTPCount: () => {
-  }
+  },
+  getUserIdToken: () => Promise.resolve("")
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
 function Web3Provider({
@@ -176,7 +177,8 @@ function Web3Provider({
     checkLoggedInMagic,
     logout: logoutMagic,
     verifyOTP,
-    cancelVerify
+    cancelVerify,
+    getUserIdToken
   } = useMagic();
   const resetOTPCount = (0, import_react.useCallback)(() => {
     setOTPCount(0);
@@ -316,7 +318,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      resetOTPCount
+      resetOTPCount,
+      getUserIdToken
     }),
     [
       magic,
@@ -335,7 +338,8 @@ function Web3Provider({
       setIsVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      resetOTPCount
+      resetOTPCount,
+      getUserIdToken
     ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Web3Context.Provider, { value: values, children });
@@ -448,6 +452,16 @@ var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) =>
       return null;
     }
   };
+  const getUserIdToken = async () => {
+    if (!magic)
+      return null;
+    try {
+      const idToken = await magic.user.getIdToken();
+      return idToken;
+    } catch (err) {
+      return null;
+    }
+  };
   const value = (0, import_react2.useMemo)(
     () => ({
       magic,
@@ -457,7 +471,8 @@ var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) =>
       isLoggedIn,
       checkLoggedInMagic,
       verifyOTP,
-      cancelVerify
+      cancelVerify,
+      getUserIdToken
     }),
     [magic]
   );

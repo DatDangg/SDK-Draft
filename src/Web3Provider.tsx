@@ -10,6 +10,7 @@ import React, {
 import Cookies from "js-cookie";
 import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
 import { Magic, MarketPlaceInfo, NFTInfo } from "./types";
+import { string } from "yup";
 
 const Web3Context = React.createContext<{
   ethersProvider: ethers.BrowserProvider | null;
@@ -30,6 +31,7 @@ const Web3Context = React.createContext<{
   cancelVerify: () => Promise<void>;
   checkLoggedInMagic: () => Promise<boolean>;
   resetOTPCount: () => void;
+  getUserIdToken: () => Promise<string | null>
 }>({
   ethersProvider: null,
   ethersSigner: null,
@@ -47,6 +49,7 @@ const Web3Context = React.createContext<{
   cancelVerify: () => Promise.resolve(),
   checkLoggedInMagic: () => Promise.resolve(false),
   resetOTPCount: () => {},
+  getUserIdToken: () => Promise.resolve(""),
 });
 
 export const useWeb3 = () => useContext(Web3Context);
@@ -99,6 +102,7 @@ function Web3Provider({
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
+    getUserIdToken,
   } = useMagic();
 
   const resetOTPCount = useCallback(() => {
@@ -246,6 +250,7 @@ function Web3Provider({
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
       resetOTPCount,
+      getUserIdToken
     }),
     [
       magic,
@@ -265,6 +270,7 @@ function Web3Provider({
       cancelVerify,
       checkLoggedInMagic,
       resetOTPCount,
+      getUserIdToken
     ]
   );
 
