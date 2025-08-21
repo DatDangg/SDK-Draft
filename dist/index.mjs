@@ -190,10 +190,12 @@ function Web3Provider({
             },
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => {
+              setIsSendingOTP(false);
               setIsVerifyingOTP(false);
               onDone?.(result);
             },
             error: (reason) => {
+              setIsSendingOTP(false);
               setIsVerifyingOTP(false);
               onError?.(reason);
             },
