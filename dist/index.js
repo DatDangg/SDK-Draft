@@ -202,10 +202,19 @@ function Web3Provider({
           deviceCheckUI: false,
           events: {
             "email-otp-sent": () => onOTPSent?.(),
-            "invalid-email-otp": () => onVerifyOTPFail?.(),
-            "expired-email-otp": () => onExpiredEmailOTP?.(),
+            "invalid-email-otp": () => {
+              setIsVerifyingOTP(false);
+              onVerifyOTPFail?.();
+            },
+            "expired-email-otp": () => {
+              setIsVerifyingOTP(false);
+              onExpiredEmailOTP?.();
+            },
             "login-throttled": () => onLoginThrottled?.(),
-            done: (result) => onDone?.(result),
+            done: (result) => {
+              setIsVerifyingOTP(false);
+              onDone?.(result);
+            },
             error: (reason) => onError?.(reason),
             "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken)
           }
@@ -230,15 +239,9 @@ function Web3Provider({
     async (otp, onLocked) => {
       if (otp.length !== 6)
         return;
-      try {
-        setIsVerifyingOTP(true);
-        const result = await verifyOTP?.(otp);
-        return result;
-      } catch {
-        setIsVerifyingOTP(false);
-      } finally {
-        setIsVerifyingOTP(false);
-      }
+      setIsVerifyingOTP(true);
+      const result = await verifyOTP?.(otp);
+      return result;
     },
     [verifyOTP, otpCount]
   );
