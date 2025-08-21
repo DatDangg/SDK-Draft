@@ -29,6 +29,7 @@ type MagicContextValue = {
     checkLoggedInMagic: () => Promise<boolean>;
     verifyOTP?: (OTP: string) => Promise<void>;
     cancelVerify?: () => Promise<void>;
+    getUserIdToken: () => Promise<string | null>;
 };
 type EssentialLoginEvents = Partial<{
     "email-otp-sent": () => void;
@@ -66,6 +67,7 @@ declare const useWeb3: () => {
     cancelVerify: () => Promise<void>;
     checkLoggedInMagic: () => Promise<boolean>;
     resetOTPCount: () => void;
+    getUserIdToken: () => Promise<string | null>;
 };
 type LoginMagicType = {
     email: string;

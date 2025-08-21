@@ -37,6 +37,7 @@ export type MagicContextValue = {
   checkLoggedInMagic: () => Promise<boolean>;
   verifyOTP?: (OTP: string) => Promise<void>;
   cancelVerify?: () => Promise<void>;
+  getUserIdToken: () => Promise<string | null>
 };
 
 export type EssentialLoginEvents = Partial<{

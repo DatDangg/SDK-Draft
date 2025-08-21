@@ -5,7 +5,7 @@ import {
   useEffect as useEffect2,
   useMemo as useMemo2,
   useRef,
-  useState as useState2
+  useState as useState2,
 } from "react";
 
 // src/magicClient.ts
@@ -63,18 +63,19 @@ var getNetworkUrl = (network, apiKey) => {
 // src/magicClient.ts
 var instance = null;
 function initMagic(apiMagicKey, network, apiNetworkKey) {
-  if (instance)
-    return instance;
+  if (instance) return instance;
   const key = apiMagicKey;
   if (!key) {
-    throw new Error("Magic API key not provided. Set NEXT_PUBLIC_MAGIC_API_KEY or pass apiKey to initMagic().");
+    throw new Error(
+      "Magic API key not provided. Set NEXT_PUBLIC_MAGIC_API_KEY or pass apiKey to initMagic()."
+    );
   }
   instance = new MagicBase(key, {
     network: {
       rpcUrl: getNetworkUrl(network, apiNetworkKey),
-      chainId: getChainId(network)
+      chainId: getChainId(network),
     },
-    extensions: [new OAuthExtension()]
+    extensions: [new OAuthExtension()],
   });
   return instance;
 }
@@ -92,7 +93,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useState
+  useState,
 } from "react";
 import Cookies from "js-cookie";
 
@@ -113,29 +114,19 @@ var Web3Context = React.createContext({
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: () => Promise.resolve(),
-  setIsSendingOTP: () => {
-  },
-  setIsVerifyingOTP: () => {
-  },
+  setIsSendingOTP: () => {},
+  setIsVerifyingOTP: () => {},
   magic: null,
   cancelVerify: () => Promise.resolve(),
   checkLoggedInMagic: () => Promise.resolve(false),
-  resetOTPCount: () => {
-  }
+  resetOTPCount: () => {},
+  getUserIdToken: () => Promise.resolve(null),
 });
 var useWeb3 = () => useContext(Web3Context);
-function Web3Provider({
-  MarketPlaceInfo,
-  NFTInfo,
-  children
-}) {
+function Web3Provider({ MarketPlaceInfo, NFTInfo, children }) {
   const [ethersProvider, setEtherProvider] = useState(null);
-  const [ethersSigner, setEtherSigner] = useState(
-    null
-  );
-  const [marketContract, setMarketContract] = useState(
-    null
-  );
+  const [ethersSigner, setEtherSigner] = useState(null);
+  const [marketContract, setMarketContract] = useState(null);
   const [nftContract, setNftContract] = useState(null);
   const [isLoggedMagic, setLoggedMagic] = useState(
     Boolean(Cookies.get(LOGGED_MAGIC))
@@ -149,7 +140,8 @@ function Web3Provider({
     checkLoggedInMagic,
     logout: logoutMagic,
     verifyOTP,
-    cancelVerify
+    cancelVerify,
+    getUserIdToken,
   } = useMagic();
   const resetOTPCount = useCallback(() => {
     setOTPCount(0);
@@ -165,7 +157,7 @@ function Web3Provider({
       onLoginThrottled,
       onDone,
       onError,
-      onIdTokenCreated
+      onIdTokenCreated,
     }) => {
       try {
         setIsSendingOTP(true);
@@ -174,7 +166,10 @@ function Web3Provider({
           showUI: false,
           deviceCheckUI: false,
           events: {
-            "email-otp-sent": () => onOTPSent?.(),
+            "email-otp-sent": () => {
+              setIsSendingOTP(false);
+              onOTPSent?.();
+            },
             "invalid-email-otp": () => {
               setIsVerifyingOTP(false);
               onVerifyOTPFail?.();
@@ -185,12 +180,17 @@ function Web3Provider({
             },
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => {
+              setIsSendingOTP(false);
               setIsVerifyingOTP(false);
               onDone?.(result);
             },
-            error: (reason) => onError?.(reason),
-            "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken)
-          }
+            error: (reason) => {
+              setIsSendingOTP(false);
+              setIsVerifyingOTP(false);
+              onError?.(reason);
+            },
+            "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken),
+          },
         });
         if (!didToken) {
           return;
@@ -198,7 +198,6 @@ function Web3Provider({
         Cookies.set(MAGIC_AUTH, JSON.stringify({ token: didToken }));
         setLoggedMagic(true);
         onSuccess?.();
-        setIsSendingOTP(false);
         setOTPCount(0);
       } catch (err) {
         const msg = err?.message;
@@ -210,8 +209,7 @@ function Web3Provider({
   );
   const verifyOTPMagic = useCallback(
     async (otp, onLocked) => {
-      if (otp.length !== 6)
-        return;
+      if (otp.length !== 6) return;
       setIsVerifyingOTP(true);
       const result = await verifyOTP?.(otp);
       return result;
@@ -260,8 +258,7 @@ function Web3Provider({
           } else {
             Cookies.remove(LOGGED_MAGIC);
           }
-        } catch (error) {
-        }
+        } catch (error) {}
       };
       checkWalletConnection();
     }
@@ -284,7 +281,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      resetOTPCount
+      resetOTPCount,
+      getUserIdToken,
     }),
     [
       magic,
@@ -303,7 +301,8 @@ function Web3Provider({
       setIsVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      resetOTPCount
+      resetOTPCount,
+      getUserIdToken,
     ]
   );
   return /* @__PURE__ */ jsx(Web3Context.Provider, { value: values, children });
@@ -315,11 +314,16 @@ import { jsx as jsx2 } from "react/jsx-runtime";
 var MagicContext = createContext(void 0);
 var useMagic = () => {
   const ctx = useContext2(MagicContext);
-  if (!ctx)
-    throw new Error("useMagic must be used within MagicProvider");
+  if (!ctx) throw new Error("useMagic must be used within MagicProvider");
   return ctx;
 };
-var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) => {
+var MagicProvider = ({
+  children,
+  apiKey,
+  network,
+  MarketPlaceInfo,
+  NFTInfo,
+}) => {
   const [magic, setMagic] = useState2(null);
   const [isLoggedIn, setIsLoggedIn] = useState2(null);
   const flowRef = useRef();
@@ -353,20 +357,18 @@ var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) =>
     deviceCheckUI = false,
     email,
     events = {},
-    showUI = false
+    showUI = false,
   }) => {
-    if (!magic)
-      throw new Error("Magic not initialized");
+    if (!magic) throw new Error("Magic not initialized");
     try {
       const flow = magic.auth.loginWithEmailOTP({
         email,
         deviceCheckUI,
-        showUI
+        showUI,
       });
       flowRef.current = flow;
       Object.entries(events).forEach(([event, handler]) => {
-        if (handler)
-          flow.on(event, handler);
+        if (handler) flow.on(event, handler);
       });
       const token = await flow;
       if (token) {
@@ -396,8 +398,7 @@ var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) =>
     console.error("cancelVerify error");
   };
   const logout = async () => {
-    if (!magic)
-      return;
+    if (!magic) return;
     try {
       await magic.user.logout();
       setIsLoggedIn(false);
@@ -406,13 +407,21 @@ var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) =>
     }
   };
   const getUserMetadata = async () => {
-    if (!magic)
-      return null;
+    if (!magic) return null;
     try {
       const metadata = await magic.user.getInfo();
       return metadata;
     } catch (err) {
       console.error("getUserMetadata error", err);
+      return null;
+    }
+  };
+  const getUserIdToken = async () => {
+    if (!magic) return null;
+    try {
+      const idToken = await magic.user.getIdToken({ lifespan: 900 });
+      return idToken;
+    } catch (err) {
       return null;
     }
   };
@@ -425,11 +434,19 @@ var MagicProvider = ({ children, apiKey, network, MarketPlaceInfo, NFTInfo }) =>
       isLoggedIn,
       checkLoggedInMagic,
       verifyOTP,
-      cancelVerify
+      cancelVerify,
+      getUserIdToken,
     }),
     [magic]
   );
-  return /* @__PURE__ */ jsx2(MagicContext.Provider, { value, children: /* @__PURE__ */ jsx2(Web3Provider_default, { MarketPlaceInfo, NFTInfo, children }) });
+  return /* @__PURE__ */ jsx2(MagicContext.Provider, {
+    value,
+    children: /* @__PURE__ */ jsx2(Web3Provider_default, {
+      MarketPlaceInfo,
+      NFTInfo,
+      children,
+    }),
+  });
 };
 
 // src/hook.ts
@@ -447,12 +464,10 @@ function useIsLoggedIn(pollInterval = 5e3) {
     const check = async () => {
       try {
         const r = await magic.user.isLoggedIn();
-        if (!mounted)
-          return;
+        if (!mounted) return;
         setIsLoggedIn(r);
       } catch {
-        if (!mounted)
-          return;
+        if (!mounted) return;
         setIsLoggedIn(false);
       } finally {
         t = window.setTimeout(check, pollInterval);
@@ -461,16 +476,9 @@ function useIsLoggedIn(pollInterval = 5e3) {
     check();
     return () => {
       mounted = false;
-      if (t)
-        clearTimeout(t);
+      if (t) clearTimeout(t);
     };
   }, [magic, pollInterval]);
   return isLoggedIn;
 }
-export {
-  MagicProvider,
-  getMagic,
-  initMagic,
-  useIsLoggedIn,
-  useWeb3
-};
+export { MagicProvider, getMagic, initMagic, useIsLoggedIn, useWeb3 };

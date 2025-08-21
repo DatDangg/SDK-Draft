@@ -10,6 +10,7 @@ import React, {
 import Cookies from "js-cookie";
 import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
 import { Magic, MarketPlaceInfo, NFTInfo } from "./types";
+import { string } from "yup";
 
 const Web3Context = React.createContext<{
   ethersProvider: ethers.BrowserProvider | null;
@@ -30,6 +31,7 @@ const Web3Context = React.createContext<{
   cancelVerify: () => Promise<void>;
   checkLoggedInMagic: () => Promise<boolean>;
   resetOTPCount: () => void;
+  getUserIdToken: () => Promise<string | null>
 }>({
   ethersProvider: null,
   ethersSigner: null,
@@ -47,6 +49,7 @@ const Web3Context = React.createContext<{
   cancelVerify: () => Promise.resolve(),
   checkLoggedInMagic: () => Promise.resolve(false),
   resetOTPCount: () => {},
+  getUserIdToken: () => Promise.resolve(null),
 });
 
 export const useWeb3 = () => useContext(Web3Context);
@@ -99,6 +102,7 @@ function Web3Provider({
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
+    getUserIdToken,
   } = useMagic();
 
   const resetOTPCount = useCallback(() => {
@@ -125,33 +129,38 @@ function Web3Provider({
           showUI: false,
           deviceCheckUI: false,
           events: {
-            "email-otp-sent": () => onOTPSent?.(),
+            "email-otp-sent": () => {
+              setIsSendingOTP(false);
+              onOTPSent?.()
+            },
             "invalid-email-otp": () => {
-              setIsVerifyingOTP(false)
+              setIsVerifyingOTP(false);
               onVerifyOTPFail?.()
             },
             "expired-email-otp": () => {
-              setIsVerifyingOTP(false)
+              setIsVerifyingOTP(false);
               onExpiredEmailOTP?.()
             },
             "login-throttled": () => onLoginThrottled?.(),
             done: (result) => {
-              setIsVerifyingOTP(false)
-
+              setIsSendingOTP(false);
+              setIsVerifyingOTP(false);
               onDone?.(result)
             },
-            error: (reason) => onError?.(reason),
+            error: (reason) => {
+              setIsSendingOTP(false);
+              setIsVerifyingOTP(false);
+              onError?.(reason)
+            },
             "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken),
           },
         });
         if (!didToken) {
           return;
         }
-
         Cookies.set(MAGIC_AUTH, JSON.stringify({ token: didToken }));
         setLoggedMagic(true);
         onSuccess?.();
-        setIsSendingOTP(false);
         setOTPCount(0);
       } catch (err: any) {
         const msg = err?.message;
@@ -165,9 +174,9 @@ function Web3Provider({
   const verifyOTPMagic = useCallback(
     async (otp: string, onLocked?: () => void) => {
       if (otp.length !== 6) return;
-      setIsVerifyingOTP(true);
-      const result = await verifyOTP?.(otp);
-      return result;
+        setIsVerifyingOTP(true);
+        const result = await verifyOTP?.(otp);
+        return result;
     },
     [verifyOTP, otpCount]
   );
@@ -243,6 +252,7 @@ function Web3Provider({
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
       resetOTPCount,
+      getUserIdToken
     }),
     [
       magic,
@@ -262,6 +272,7 @@ function Web3Provider({
       cancelVerify,
       checkLoggedInMagic,
       resetOTPCount,
+      getUserIdToken
     ]
   );
 
