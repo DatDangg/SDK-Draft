@@ -1,10 +1,8 @@
-import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { useWeb3 } from "magic-wrapper-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import "./App.css";
 import { Badge } from "./components/ui/badge";
-import { Button } from "./components/ui/button";
 import {
   Card,
   CardContent,
@@ -14,11 +12,9 @@ import {
 } from "./components/ui/card";
 import Timer from "./helpers/timer";
 
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "./components/ui/input-otp";
+import StepEmail from "./components/steps/StepEmail";
+import StepOTP from "./components/steps/StepOTP";
+import StepSuccess from "./components/steps/StepSuccess";
 
 export const STEP = {
   EMAIL: "EMAIL",
@@ -29,12 +25,14 @@ export const STEP = {
 
 function App() {
   const {
+    magic,
     isLoggedMagic,
     loginMagic,
     verifyOTPMagic,
     isSendingOTP,
     isVerifyingOTP,
     setIsSendingOTP,
+    disconnectWallet,
   } = useWeb3();
   //! STATES
   const [step, setStep] = useState<(typeof STEP)[keyof typeof STEP]>(
@@ -43,6 +41,7 @@ function App() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
   const [otpValue, setOTPValue] = useState<string>("");
+  const [walletAddress, setWalletAddress] = useState<string>("");
   const timer = useRef(new Timer());
   //! EFFECTS
   useEffect(() => {
@@ -53,6 +52,20 @@ function App() {
       verifyMagic();
     }
   }, [otpValue]);
+
+  useEffect(() => {
+    const getWalletAddress = async () => {
+      const address = await magic?.user
+        .getInfo()
+        .then((info) => info?.publicAddress);
+      console.log(address);
+      setWalletAddress(String(address));
+    };
+    if (isLoggedMagic) {
+      getWalletAddress();
+      setStep(STEP.SUCCESS);
+    }
+  }, [isLoggedMagic]);
 
   //! FUNCTIONS
   const parseMagicError = useCallback((err: any): string => {
@@ -72,8 +85,10 @@ function App() {
     // Input OTP exceed 3 times -> set to loading
     if (reason?.code === -32603) {
       timer.current.debounce(() => {
+        setOTPValue("");
         setIsSendingOTP(false);
         setStep(STEP.EMAIL);
+        toast.warning("Maximum attempts exceeded. Please try again.");
       }, 300);
     }
   }, []);
@@ -90,7 +105,6 @@ function App() {
       await loginMagic?.({
         email: email.trim().toLowerCase(),
         onSuccess: () => {
-          setStep(STEP.OTP);
           setSubmitting(false);
         },
         onFail: () => {
@@ -105,6 +119,7 @@ function App() {
         },
         onDone() {
           toast("Success");
+          setOTPValue("");
           setStep(STEP.SUCCESS);
         },
         onLoginThrottled() {
@@ -126,64 +141,31 @@ function App() {
     switch (step) {
       case STEP.EMAIL:
         return (
-          <form onSubmit={handleSubmitEmail}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <label htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  disabled={isSubmitting || isSendingOTP}
-                  className="border-2 p-2 rounded-md"
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSubmitting || isSendingOTP}
-                >
-                  Login
-                </Button>
-              </div>
-            </div>
-          </form>
+          <StepEmail
+            handleSubmitEmail={handleSubmitEmail}
+            isSendingOTP={isSendingOTP}
+            isSubmitting={isSubmitting}
+          />
         );
       case STEP.OTP:
         return (
-          <form>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <label htmlFor="otp">OTP</label>
-                <InputOTP
-                  autoFocus
-                  onFocus={() => setErrorMsg(null)}
-                  maxLength={6}
-                  value={otpValue}
-                  pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                  onChange={(v) => {
-                    setOTPValue(v);
-                  }}
-                  disabled={isVerifyingOTP}
-                >
-                  <div className="mx-auto flex items-center justify-between gap-6">
-                    {Array.from({ length: 6 }).map((_, idx) => (
-                      <InputOTPGroup key={idx}>
-                        <InputOTPSlot
-                          index={idx}
-                          className="h-[44px] w-[44px] text-[20px]"
-                          autoFocus={idx === 0}
-                        />
-                      </InputOTPGroup>
-                    ))}
-                  </div>
-                </InputOTP>
-              </div>
-            </div>
-          </form>
+          <StepOTP
+            isVerifyingOTP={isVerifyingOTP}
+            errorMsg={errorMsg}
+            otpValue={otpValue}
+            setOTPValue={setOTPValue}
+          />
         );
       case STEP.VERIFYING:
         return <div>Loading...</div>;
+      case STEP.SUCCESS:
+        return (
+          <StepSuccess
+            walletAddress={walletAddress}
+            disconnectWallet={disconnectWallet}
+            setStep={setStep}
+          />
+        );
     }
   };
 
@@ -197,7 +179,10 @@ function App() {
             Enter your email to login and create a wallet with Magic.
             <div>
               Current status:
-              <Badge variant={"destructive"} className="ml-2">
+              <Badge
+                variant={isLoggedMagic ? "success" : "destructive"}
+                className="ml-2"
+              >
                 {isLoggedMagic ? "Logged in" : "Not logged in"}
               </Badge>
             </div>

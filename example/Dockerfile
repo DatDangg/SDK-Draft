@@ -32,11 +32,16 @@ RUN pnpm build
 # Move into the example app directory
 WORKDIR /app/example
 
+# Copy .env files if they exist
+COPY example/.env* ./
+# Create .env
+RUN if [ ! -f .env ]; then mv .env.example .env; fi
 # Install example dependencies, which will link to the built SDK
 RUN pnpm install
 
 # Build the example app
 RUN pnpm build
+
 
 
 # ---------- Runtime Stage ----------
