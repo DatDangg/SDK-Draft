@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  example-app:
+    build:
+      context: .
+      dockerfile: example/Dockerfile
+    container_name: magic-wrapper-sdk-example
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata: {}
+  node_modules: {}
