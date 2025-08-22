@@ -16,8 +16,6 @@ type MarketPlaceInfo = {
 };
 type LoginEmailOTPType = {
     email: string;
-    showUI?: boolean;
-    deviceCheckUI?: boolean;
     events: EssentialLoginEvents;
 };
 type MagicContextValue = {
@@ -41,7 +39,7 @@ type EssentialLoginEvents = Partial<{
     error: (reason: any) => void;
     "Auth/id-token-created": (idToken: string) => void;
 }>;
-type EthUnit = "wei" | "kwei" | "babbage" | "mwei" | "lovelace" | "gwei" | "shannon" | "szabo" | "finney" | "ether" | number;
+type EthUnit = "wei" | "kwei" | "babbage" | "mwei" | "lovelace" | "gwei" | "shannon" | "szabo" | "finney" | "ether";
 
 declare const MagicProvider: React.FC<{
     children: ReactNode;
@@ -58,8 +56,6 @@ declare const useWeb3: () => {
     verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
     isLoggedMagic: boolean;
     isSendingOTP: boolean;
-    setIsSendingOTP: React.Dispatch<React.SetStateAction<boolean>>;
-    setIsVerifyingOTP: React.Dispatch<React.SetStateAction<boolean>>;
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;
     magic: Magic | null;

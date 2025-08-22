@@ -54,7 +54,7 @@ var getNetworkUrl = (network, apiKey) => {
     case "zksync-sepolia" /* ZKSYNC_SEPOLIA */:
       return "https://zksync-era-sepolia.blockpi.network/v1/rpc/public";
     case "soneium" /* SONEIUM */:
-      return `https://soneium-minato.g.alchemy.com/v2/${apiKey}`;
+      return `https://rpc.minato.soneium.org/`;
     default:
       throw new Error("Network not supported");
   }
@@ -122,15 +122,11 @@ var Web3Context = React.createContext({
   marketContract: null,
   nftContract: null,
   loginMagic: null,
-  isLoggedMagic: false,
   verifyOTPMagic: null,
+  isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: () => Promise.resolve(),
-  setIsSendingOTP: () => {
-  },
-  setIsVerifyingOTP: () => {
-  },
   magic: null,
   cancelVerify: () => Promise.resolve(),
   checkLoggedInMagic: () => Promise.resolve(false),
@@ -189,8 +185,6 @@ function Web3Provider({
         setIsSendingOTP(true);
         const didToken = await loginEmailOTP({
           email,
-          showUI: false,
-          deviceCheckUI: false,
           events: {
             "email-otp-sent": () => {
               setIsSendingOTP(false);
@@ -305,8 +299,6 @@ function Web3Provider({
       loginMagic,
       isLoggedMagic,
       disconnectWallet,
-      setIsSendingOTP,
-      setIsVerifyingOTP,
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
@@ -319,18 +311,16 @@ function Web3Provider({
     [
       magic,
       verifyOTP,
-      disconnectWallet,
       ethersProvider,
       ethersSigner,
-      isLoggedMagic,
-      loginMagic,
       marketContract,
       nftContract,
+      loginMagic,
+      isLoggedMagic,
+      disconnectWallet,
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
-      setIsSendingOTP,
-      setIsVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
       resetOTPCount,
@@ -383,18 +373,16 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     return false;
   };
   const loginEmailOTP = async ({
-    deviceCheckUI = false,
     email,
-    events = {},
-    showUI = false
+    events = {}
   }) => {
     if (!magic)
       throw new Error("Magic not initialized");
     try {
       const flow = magic.auth.loginWithEmailOTP({
         email,
-        deviceCheckUI,
-        showUI
+        deviceCheckUI: false,
+        showUI: false
       });
       flowRef.current = flow;
       Object.entries(events).forEach(([event, handler]) => {
@@ -442,7 +430,7 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     const fromDecimals = typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
     const toDecimals = typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
     if (fromDecimals == null || toDecimals == null) {
-      throw new Error("\u0110\u01A1n v\u1ECB kh\xF4ng h\u1EE3p l\u1EC7");
+      throw new Error("Wrong Unit");
     }
     const inWei = parseUnits(value2.toString(), fromDecimals);
     return formatUnits(inWei, toDecimals);
@@ -471,15 +459,15 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
   const value = useMemo2(
     () => ({
       magic,
-      loginEmailOTP,
-      logout,
-      getUserMetadata,
       isLoggedIn,
       checkLoggedInMagic,
+      loginEmailOTP,
       verifyOTP,
       cancelVerify,
-      getUserIdToken,
-      convertBalance
+      logout,
+      convertBalance,
+      getUserMetadata,
+      getUserIdToken
     }),
     [magic]
   );
