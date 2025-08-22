@@ -1,4 +1,5 @@
 import { Button } from "../ui/button";
+import Loading from "../ui/loading";
 
 interface StepEmailProps {
   handleSubmitEmail: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
@@ -28,7 +29,14 @@ export default function StepEmail({
             className="w-full"
             disabled={isSubmitting || isSendingOTP}
           >
-            Login
+            {isSubmitting || isSendingOTP ? (
+              <div className="flex flex-row items-center gap-2">
+                <Loading />
+                Login...
+              </div>
+            ) : (
+              <p>Login</p>
+            )}
           </Button>
         </div>
       </div>
