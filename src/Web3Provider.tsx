@@ -10,7 +10,6 @@ import React, {
 import Cookies from "js-cookie";
 import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
 import { EthUnit, Magic, MarketPlaceInfo, NFTInfo } from "./types";
-import { string } from "yup";
 
 const Web3Context = React.createContext<{
   ethersProvider: ethers.BrowserProvider | null;
@@ -23,8 +22,6 @@ const Web3Context = React.createContext<{
     | null;
   isLoggedMagic: boolean;
   isSendingOTP: boolean;
-  setIsSendingOTP: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsVerifyingOTP: React.Dispatch<React.SetStateAction<boolean>>;
   isVerifyingOTP: boolean;
   disconnectWallet: () => Promise<void>;
   magic: Magic | null;
@@ -39,13 +36,11 @@ const Web3Context = React.createContext<{
   marketContract: null,
   nftContract: null,
   loginMagic: null,
-  isLoggedMagic: false,
   verifyOTPMagic: null,
+  isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: () => Promise.resolve(),
-  setIsSendingOTP: () => {},
-  setIsVerifyingOTP: () => {},
   magic: null,
   cancelVerify: () => Promise.resolve(),
   checkLoggedInMagic: () => Promise.resolve(false),
@@ -129,8 +124,6 @@ function Web3Provider({
         setIsSendingOTP(true);
         const didToken = await loginEmailOTP({
           email,
-          showUI: false,
-          deviceCheckUI: false,
           events: {
             "email-otp-sent": () => {
               setIsSendingOTP(false);
@@ -250,8 +243,6 @@ function Web3Provider({
       loginMagic,
       isLoggedMagic,
       disconnectWallet,
-      setIsSendingOTP,
-      setIsVerifyingOTP,
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
@@ -264,18 +255,16 @@ function Web3Provider({
     [
       magic,
       verifyOTP,
-      disconnectWallet,
       ethersProvider,
       ethersSigner,
-      isLoggedMagic,
-      loginMagic,
       marketContract,
       nftContract,
+      loginMagic,
+      isLoggedMagic,
+      disconnectWallet,
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
-      setIsSendingOTP,
-      setIsVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
       resetOTPCount,

@@ -70,18 +70,16 @@ export const MagicProvider: React.FC<{
   };
 
   const loginEmailOTP = async ({
-    deviceCheckUI = false,
     email,
     events = {},
-    showUI = false,
   }: LoginEmailOTPType) => {
     if (!magic) throw new Error("Magic not initialized");
 
     try {
       const flow = magic.auth.loginWithEmailOTP({
         email,
-        deviceCheckUI,
-        showUI,
+        deviceCheckUI: false,
+        showUI: false,
       });
       flowRef.current = flow;
       Object.entries(events).forEach(([event, handler]) => {
@@ -141,7 +139,7 @@ export const MagicProvider: React.FC<{
       typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
 
     if (fromDecimals == null || toDecimals == null) {
-      throw new Error("Đơn vị không hợp lệ");
+      throw new Error("Wrong Unit");
     }
 
     const inWei = parseUnits(value.toString(), fromDecimals);
@@ -172,15 +170,15 @@ export const MagicProvider: React.FC<{
   const value = useMemo(
     () => ({
       magic,
-      loginEmailOTP,
-      logout,
-      getUserMetadata,
       isLoggedIn,
       checkLoggedInMagic,
+      loginEmailOTP,
       verifyOTP,
       cancelVerify,
-      getUserIdToken,
+      logout,
       convertBalance,
+      getUserMetadata,
+      getUserIdToken,
     }),
     [magic]
   );

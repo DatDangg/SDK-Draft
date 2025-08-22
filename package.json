@@ -1,6 +1,6 @@
 {
   "name": "magic-wrapper-sdk",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Internal wrapper SDK around magic-sdk for React projects",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

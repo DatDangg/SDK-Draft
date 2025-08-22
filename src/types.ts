@@ -23,8 +23,6 @@ export type MarketPlaceInfo = {
 
 export type LoginEmailOTPType = {
   email: string;
-  showUI?: boolean;
-  deviceCheckUI?: boolean;
   events: EssentialLoginEvents;
 };
 
@@ -52,22 +50,8 @@ export type EssentialLoginEvents = Partial<{
 }>;
 
 
-export type EthUnit =
-  | "wei"
-  | "kwei" | "babbage"
-  | "mwei" | "lovelace"
-  | "gwei" | "shannon"
-  | "szabo"
-  | "finney"
-  | "ether"
-  | number;
+export type EthUnit = "wei" | "kwei" | "babbage" | "mwei" | "lovelace" | "gwei" | "shannon" | "szabo" | "finney" | "ether";
 
 export const UNIT_DECIMALS: Record<Exclude<EthUnit, number>, number> = {
-  wei: 0,
-  kwei: 3, babbage: 3,
-  mwei: 6, lovelace: 6,
-  gwei: 9, shannon: 9,
-  szabo: 12,
-  finney: 15,
-  ether: 18,
+  wei: 0, kwei: 3, babbage: 3, mwei: 6, lovelace: 6, gwei: 9, shannon: 9, szabo: 12, finney: 15, ether: 18,
 };
