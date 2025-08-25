@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { initMagic } from "./magicClient";
 import {
+  CancelVerifyResult,
   UNIT_DECIMALS,
   type EthUnit,
   type LoginEmailOTPType,
@@ -110,16 +111,18 @@ export const MagicProvider: React.FC<{
     console.error("verifyOTP error: must send OTP first");
   };
 
-const cancelVerify = async (): Promise<void> => {
-  if (!flowRef?.current) {
-    console.error("cancelVerify failed: flowRef is not initialized");
-    return;
-  }
+// types.ts (hoặc cùng file)
 
+// Giữ nguyên flowRef như bạn đang có
+const cancelVerify = async (): Promise<CancelVerifyResult> => {
+  if (!flowRef?.current) {
+    return { status: "no_flow", reason: "not_initialized" };
+  }
   try {
     await flowRef.current.emit("cancel");
+    return { status: "success" };
   } catch (err) {
-    console.error("cancelVerify exception:", err);
+    return { status: "error", error: err };
   }
 };
 

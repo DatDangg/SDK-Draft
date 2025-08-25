@@ -156,8 +156,7 @@ var Web3Context = import_react.default.createContext({
   disconnectWallet: async () => {
   },
   magic: null,
-  cancelVerify: async () => {
-  },
+  cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
   resetOTPCount: () => {
   },
@@ -434,13 +433,13 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
   };
   const cancelVerify = async () => {
     if (!flowRef?.current) {
-      console.error("cancelVerify failed: flowRef is not initialized");
-      return;
+      return { status: "no_flow", reason: "not_initialized" };
     }
     try {
       await flowRef.current.emit("cancel");
+      return { status: "success" };
     } catch (err) {
-      console.error("cancelVerify exception:", err);
+      return { status: "error", error: err };
     }
   };
   const logout = async () => {

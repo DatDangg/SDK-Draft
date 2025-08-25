@@ -23,7 +23,7 @@ export const Web3Context = React.createContext<Web3ContextType>({
   isVerifyingOTP: false,
   disconnectWallet: async () => {},
   magic: null,
-  cancelVerify: async () => {},
+  cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
   resetOTPCount: () => {},
   getUserIdToken: async () => null,

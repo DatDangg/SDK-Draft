@@ -26,7 +26,7 @@ type MagicContextValue = {
     isLoggedIn: boolean | null;
     checkLoggedInMagic: () => Promise<boolean>;
     verifyOTP?: (OTP: string) => Promise<void>;
-    cancelVerify?: () => Promise<void>;
+    cancelVerify?: () => Promise<CancelVerifyResult>;
     getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
@@ -65,12 +65,21 @@ interface Web3ContextType {
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;
     magic: Magic | null;
-    cancelVerify: () => Promise<void>;
+    cancelVerify: () => Promise<CancelVerifyResult | void>;
     checkLoggedInMagic: () => Promise<boolean>;
     resetOTPCount: () => void;
     getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 }
+type CancelVerifyResult = {
+    status: "success";
+} | {
+    status: "no_flow";
+    reason: "not_initialized";
+} | {
+    status: "error";
+    error: unknown;
+};
 
 declare const MagicProvider: React.FC<{
     children: ReactNode;
