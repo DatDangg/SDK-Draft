@@ -40,14 +40,20 @@ type EssentialLoginEvents = Partial<{
     "Auth/id-token-created": (idToken: string) => void;
 }>;
 type EthUnit = "wei" | "kwei" | "babbage" | "mwei" | "lovelace" | "gwei" | "shannon" | "szabo" | "finney" | "ether";
-
-declare const MagicProvider: React.FC<{
-    children: ReactNode;
-    MarketPlaceInfo: MarketPlaceInfo;
-    NFTInfo: NFTInfo;
-}>;
-
-declare const useWeb3: () => {
+type LoginMagicType = {
+    email: string;
+    onSuccess?: () => void;
+    onFail?: () => void;
+    onOTPSent?: () => void;
+    onVerifyOTPFail?: () => void;
+    onExpiredEmailOTP?: () => void;
+    onLoginThrottled?: () => void;
+    onDone?: (result?: string | null) => void;
+    onError?: (reason: any) => void;
+    onIdTokenCreated?: (idToken: string) => void;
+    onLocked?: () => void;
+};
+interface Web3ContextType {
     ethersProvider: ethers.BrowserProvider | null;
     ethersSigner: ethers.JsonRpcSigner | null;
     marketContract: ethers.Contract | null;
@@ -64,20 +70,15 @@ declare const useWeb3: () => {
     resetOTPCount: () => void;
     getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
-};
-type LoginMagicType = {
-    email: string;
-    onSuccess?: () => void;
-    onFail?: () => void;
-    onOTPSent?: () => void;
-    onVerifyOTPFail?: () => void;
-    onExpiredEmailOTP?: () => void;
-    onLoginThrottled?: () => void;
-    onDone?: (result?: string | null) => void;
-    onError?: (reason: any) => void;
-    onIdTokenCreated?: (idToken: string) => void;
-    onLocked?: () => void;
-};
+}
+
+declare const MagicProvider: React.FC<{
+    children: ReactNode;
+    MarketPlaceInfo: MarketPlaceInfo;
+    NFTInfo: NFTInfo;
+}>;
+
+declare const useWeb3: () => Web3ContextType;
 
 declare function useIsLoggedIn(pollInterval?: number): boolean | null;
 

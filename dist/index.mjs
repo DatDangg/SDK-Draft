@@ -126,13 +126,15 @@ var Web3Context = React.createContext({
   isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
-  disconnectWallet: () => Promise.resolve(),
+  disconnectWallet: async () => {
+  },
   magic: null,
-  cancelVerify: () => Promise.resolve(),
-  checkLoggedInMagic: () => Promise.resolve(false),
+  cancelVerify: async () => {
+  },
+  checkLoggedInMagic: async () => false,
   resetOTPCount: () => {
   },
-  getUserIdToken: () => Promise.resolve(null),
+  getUserIdToken: async () => null,
   convertBalance: () => ""
 });
 var useWeb3 = () => useContext(Web3Context);
@@ -142,16 +144,10 @@ function Web3Provider({
   children
 }) {
   const [ethersProvider, setEtherProvider] = useState(null);
-  const [ethersSigner, setEtherSigner] = useState(
-    null
-  );
-  const [marketContract, setMarketContract] = useState(
-    null
-  );
+  const [ethersSigner, setEtherSigner] = useState(null);
+  const [marketContract, setMarketContract] = useState(null);
   const [nftContract, setNftContract] = useState(null);
-  const [isLoggedMagic, setLoggedMagic] = useState(
-    Boolean(Cookies.get(LOGGED_MAGIC))
-  );
+  const [isLoggedMagic, setLoggedMagic] = useState(Boolean(Cookies.get(LOGGED_MAGIC)));
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
   const [otpCount, setOTPCount] = useState(0);
@@ -410,11 +406,15 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     console.error("verifyOTP error: must send OTP first");
   };
   const cancelVerify = async () => {
-    if (flowRef?.current) {
-      const res = await flowRef?.current?.emit("cancel");
-      return res;
+    if (!flowRef?.current) {
+      console.error("cancelVerify failed: flowRef is not initialized");
+      return;
     }
-    console.error("cancelVerify error");
+    try {
+      await flowRef.current.emit("cancel");
+    } catch (err) {
+      console.error("cancelVerify exception:", err);
+    }
   };
   const logout = async () => {
     if (!magic)

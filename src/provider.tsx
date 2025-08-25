@@ -110,13 +110,20 @@ export const MagicProvider: React.FC<{
     console.error("verifyOTP error: must send OTP first");
   };
 
-  const cancelVerify = async () => {
-    if (flowRef?.current) {
-      const res = await flowRef?.current?.emit("cancel");
-      return res;
-    }
-    console.error("cancelVerify error");
-  };
+const cancelVerify = async (): Promise<void> => {
+  if (!flowRef?.current) {
+    console.error("cancelVerify failed: flowRef is not initialized");
+    return;
+  }
+
+  try {
+    await flowRef.current.emit("cancel");
+  } catch (err) {
+    console.error("cancelVerify exception:", err);
+  }
+};
+
+
 
   const logout = async () => {
     if (!magic) return;

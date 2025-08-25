@@ -153,13 +153,15 @@ var Web3Context = import_react.default.createContext({
   isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
-  disconnectWallet: () => Promise.resolve(),
+  disconnectWallet: async () => {
+  },
   magic: null,
-  cancelVerify: () => Promise.resolve(),
-  checkLoggedInMagic: () => Promise.resolve(false),
+  cancelVerify: async () => {
+  },
+  checkLoggedInMagic: async () => false,
   resetOTPCount: () => {
   },
-  getUserIdToken: () => Promise.resolve(null),
+  getUserIdToken: async () => null,
   convertBalance: () => ""
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
@@ -169,16 +171,10 @@ function Web3Provider({
   children
 }) {
   const [ethersProvider, setEtherProvider] = (0, import_react.useState)(null);
-  const [ethersSigner, setEtherSigner] = (0, import_react.useState)(
-    null
-  );
-  const [marketContract, setMarketContract] = (0, import_react.useState)(
-    null
-  );
+  const [ethersSigner, setEtherSigner] = (0, import_react.useState)(null);
+  const [marketContract, setMarketContract] = (0, import_react.useState)(null);
   const [nftContract, setNftContract] = (0, import_react.useState)(null);
-  const [isLoggedMagic, setLoggedMagic] = (0, import_react.useState)(
-    Boolean(import_js_cookie.default.get(LOGGED_MAGIC))
-  );
+  const [isLoggedMagic, setLoggedMagic] = (0, import_react.useState)(Boolean(import_js_cookie.default.get(LOGGED_MAGIC)));
   const [isSendingOTP, setIsSendingOTP] = (0, import_react.useState)(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = (0, import_react.useState)(false);
   const [otpCount, setOTPCount] = (0, import_react.useState)(0);
@@ -437,11 +433,15 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     console.error("verifyOTP error: must send OTP first");
   };
   const cancelVerify = async () => {
-    if (flowRef?.current) {
-      const res = await flowRef?.current?.emit("cancel");
-      return res;
+    if (!flowRef?.current) {
+      console.error("cancelVerify failed: flowRef is not initialized");
+      return;
     }
-    console.error("cancelVerify error");
+    try {
+      await flowRef.current.emit("cancel");
+    } catch (err) {
+      console.error("cancelVerify exception:", err);
+    }
   };
   const logout = async () => {
     if (!magic)

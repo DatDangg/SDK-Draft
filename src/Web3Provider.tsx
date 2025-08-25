@@ -9,28 +9,9 @@ import React, {
 } from "react";
 import Cookies from "js-cookie";
 import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
-import { EthUnit, Magic, MarketPlaceInfo, NFTInfo } from "./types";
+import {  LoginMagicType, MarketPlaceInfo, NFTInfo, Web3ContextType } from "./types";
 
-const Web3Context = React.createContext<{
-  ethersProvider: ethers.BrowserProvider | null;
-  ethersSigner: ethers.JsonRpcSigner | null;
-  marketContract: ethers.Contract | null;
-  nftContract: ethers.Contract | null;
-  loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-  verifyOTPMagic:
-    | ((otp: string, onLocked?: () => void) => Promise<void>)
-    | null;
-  isLoggedMagic: boolean;
-  isSendingOTP: boolean;
-  isVerifyingOTP: boolean;
-  disconnectWallet: () => Promise<void>;
-  magic: Magic | null;
-  cancelVerify: () => Promise<void>;
-  checkLoggedInMagic: () => Promise<boolean>;
-  resetOTPCount: () => void;
-  getUserIdToken: () => Promise<string | null>
-  convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
-}>({
+export const Web3Context = React.createContext<Web3ContextType>({
   ethersProvider: null,
   ethersSigner: null,
   marketContract: null,
@@ -40,30 +21,16 @@ const Web3Context = React.createContext<{
   isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
-  disconnectWallet: () => Promise.resolve(),
+  disconnectWallet: async () => {},
   magic: null,
-  cancelVerify: () => Promise.resolve(),
-  checkLoggedInMagic: () => Promise.resolve(false),
+  cancelVerify: async () => {},
+  checkLoggedInMagic: async () => false,
   resetOTPCount: () => {},
-  getUserIdToken: () => Promise.resolve(null),
+  getUserIdToken: async () => null,
   convertBalance: () => "",
 });
 
 export const useWeb3 = () => useContext(Web3Context);
-
-type LoginMagicType = {
-  email: string;
-  onSuccess?: () => void;
-  onFail?: () => void;
-  onOTPSent?: () => void;
-  onVerifyOTPFail?: () => void;
-  onExpiredEmailOTP?: () => void;
-  onLoginThrottled?: () => void;
-  onDone?: (result?: string | null) => void;
-  onError?: (reason: any) => void;
-  onIdTokenCreated?: (idToken: string) => void;
-  onLocked?: () => void;
-};
 
 function Web3Provider({
   MarketPlaceInfo,
@@ -76,16 +43,10 @@ function Web3Provider({
 }) {
   const [ethersProvider, setEtherProvider] =
     useState<ethers.BrowserProvider | null>(null);
-  const [ethersSigner, setEtherSigner] = useState<ethers.JsonRpcSigner | null>(
-    null
-  );
-  const [marketContract, setMarketContract] = useState<ethers.Contract | null>(
-    null
-  );
+  const [ethersSigner, setEtherSigner] = useState<ethers.JsonRpcSigner | null>(null);
+  const [marketContract, setMarketContract] = useState<ethers.Contract | null>(null);
   const [nftContract, setNftContract] = useState<ethers.Contract | null>(null);
-  const [isLoggedMagic, setLoggedMagic] = useState<boolean>(
-    Boolean(Cookies.get(LOGGED_MAGIC))
-  );
+  const [isLoggedMagic, setLoggedMagic] = useState<boolean>(Boolean(Cookies.get(LOGGED_MAGIC)));
 
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
@@ -188,7 +149,8 @@ function Web3Provider({
       Cookies.remove(LOGGED_MAGIC);
     }
   }, [magic, logoutMagic]);
-
+  
+// =======================================
   useEffect(() => {
     if (magic && isLoggedMagic) {
       const checkEthers = async () => {
@@ -214,6 +176,7 @@ function Web3Provider({
     }
   }, [magic, isLoggedMagic]);
 
+// ==============================================
   useEffect(() => {
     if (magic) {
       const checkWalletConnection = async () => {
