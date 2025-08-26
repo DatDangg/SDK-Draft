@@ -30,12 +30,12 @@ export type MagicContextValue = {
   magic: Magic | null;
   loginEmailOTP: (props: LoginEmailOTPType) => Promise<string | null>;
   logout: () => Promise<void>;
-  getUserMetadata: () => Promise<any | null>;
+  // getUserMetadata: () => Promise<any | null>;
   isLoggedIn: boolean | null;
   checkLoggedInMagic: () => Promise<boolean>;
   verifyOTP?: (OTP: string) => Promise<void>;
   cancelVerify?: () => Promise<CancelVerifyResult>;
-  getUserIdToken: () => Promise<string | null>
+  // getUserIdToken: () => Promise<string | null>
   convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 
@@ -77,19 +77,17 @@ export interface Web3ContextType {
   nftContract: ethers.Contract | null;
   loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
   verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
-  isLoggedMagic: boolean;
+  // isLoggedMagic: boolean;
   isSendingOTP: boolean;
   isVerifyingOTP: boolean;
   disconnectWallet: () => Promise<void>;
   magic: Magic | null;
   cancelVerify: () => Promise<CancelVerifyResult | void>;
   checkLoggedInMagic: () => Promise<boolean>;
-  resetOTPCount: () => void;
-  getUserIdToken: () => Promise<string | null>;
+  // resetOTPCount: () => void;
+  // getUserIdToken: () => Promise<string | null>;
   convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 }
-
-
 
 export type CancelVerifyResult =
   | { status: "success" }

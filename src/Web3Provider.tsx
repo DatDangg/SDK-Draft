@@ -18,15 +18,15 @@ export const Web3Context = React.createContext<Web3ContextType>({
   nftContract: null,
   loginMagic: null,
   verifyOTPMagic: null,
-  isLoggedMagic: false,
+  // isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: async () => {},
   magic: null,
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
-  resetOTPCount: () => {},
-  getUserIdToken: async () => null,
+  // resetOTPCount: () => {},
+  // getUserIdToken: async () => null,
   convertBalance: () => "",
 });
 
@@ -46,27 +46,22 @@ function Web3Provider({
   const [ethersSigner, setEtherSigner] = useState<ethers.JsonRpcSigner | null>(null);
   const [marketContract, setMarketContract] = useState<ethers.Contract | null>(null);
   const [nftContract, setNftContract] = useState<ethers.Contract | null>(null);
-  const [isLoggedMagic, setLoggedMagic] = useState<boolean>(Boolean(Cookies.get(LOGGED_MAGIC)));
 
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
 
-  const [otpCount, setOTPCount] = useState(0);
-
   const {
     magic,
+    isLoggedIn,
     loginEmailOTP,
     checkLoggedInMagic,
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
-    getUserIdToken,
     convertBalance
   } = useMagic();
 
-  const resetOTPCount = useCallback(() => {
-    setOTPCount(0);
-  }, []);
+  const isLoggedMagic = Boolean(isLoggedIn)
 
   const loginMagic = useCallback(
     async ({
@@ -120,9 +115,7 @@ function Web3Provider({
           return;
         }
         Cookies.set(MAGIC_AUTH, JSON.stringify({ token: didToken }));
-        setLoggedMagic(true);
         onSuccess?.();
-        setOTPCount(0);
       } catch (err: any) {
         console.log(err)
         onFail?.();
@@ -135,19 +128,22 @@ function Web3Provider({
   const verifyOTPMagic = useCallback(
     async (otp: string) => {
       if (otp.length !== 6) return;
-        setIsVerifyingOTP(true);
+      setIsVerifyingOTP(true);
+      try {
         const result = await verifyOTP?.(otp);
         return result;
+      } finally {
+        setIsVerifyingOTP(false);
+      }
     },
-    [verifyOTP, otpCount]
+    [verifyOTP]
   );
 
   const disconnectWallet = useCallback(async () => {
     if (magic) {
       await logoutMagic();
-      setLoggedMagic(false);
       Cookies.remove(MAGIC_AUTH);
-      Cookies.remove(LOGGED_MAGIC);
+      // Cookies.remove(LOGGED_MAGIC);
     }
   }, [magic, logoutMagic]);
   
@@ -177,24 +173,49 @@ function Web3Provider({
     }
   }, [magic, isLoggedMagic]);
 
-// ==============================================
   useEffect(() => {
-    if (magic) {
-      const checkWalletConnection = async () => {
-        try {
-          const logged = await checkLoggedInMagic();
-          setLoggedMagic(logged);
-          if (logged) {
-            Cookies.set(LOGGED_MAGIC, "true");
-          } else {
-            Cookies.remove(LOGGED_MAGIC);
-          }
-        } catch (error) {}
-      };
-
-      checkWalletConnection();
+    if (!magic || !isLoggedMagic) {
+      setEtherProvider(null);
+      setEtherSigner(null);
+      setMarketContract(null);
+      setNftContract(null);
+      return;
     }
-  }, [magic]);
+
+    let mounted = true;
+
+    const initEthers = async () => {
+      const provider = new ethers.BrowserProvider(magic.rpcProvider as any);
+      const signer = await provider.getSigner();
+      const market = new ethers.Contract(
+        MarketPlaceInfo.address,
+        MarketPlaceInfo.abi,
+        signer
+      );
+      const nft = new ethers.Contract(
+        NFTInfo.address,
+        NFTInfo.abi,
+        signer
+      );
+
+      if (!mounted) return;
+      setEtherProvider(provider);
+      setEtherSigner(signer);
+      setMarketContract(market);
+      setNftContract(nft);
+    };
+
+    void initEthers();
+    return () => {
+      mounted = false;
+    };
+  }, [magic, isLoggedMagic, MarketPlaceInfo, NFTInfo]);
+
+// ==============================================
+useEffect(() => {
+    if (!magic) return;
+    void checkLoggedInMagic();
+  }, [magic, checkLoggedInMagic]);
 
   const values = useMemo(
     () => ({
@@ -212,8 +233,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      resetOTPCount,
-      getUserIdToken,
+      // resetOTPCount,
+      // getUserIdToken,
       convertBalance
     }),
     [
@@ -231,8 +252,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      resetOTPCount,
-      getUserIdToken,
+      // resetOTPCount,
+      // getUserIdToken,
       convertBalance
     ]
   );

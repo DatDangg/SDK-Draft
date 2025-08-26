@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useCallback,
 } from "react";
 import { initMagic } from "./magicClient";
 import {
@@ -30,11 +31,24 @@ export const useMagic = (): MagicContextValue => {
   return ctx;
 };
 
-export const MagicProvider: React.FC<{
+type MagicProviderProps = {
   children: ReactNode;
   MarketPlaceInfo: MarketPlaceInfo;
   NFTInfo: NFTInfo;
-}> = ({ children, MarketPlaceInfo, NFTInfo }) => {
+  /** publishable key của Magic — bắt buộc khi đóng gói SDK */
+  magicKey: string;
+  /** tuỳ chọn khác khi init Magic (network, locale, extensions, ...) */
+  magicOptions?: Record<string, any>;
+  /** callback để SDK báo cho app token/didToken nếu bạn cần tự lưu */
+  onToken?: (token: string) => void;
+};
+
+export const MagicProvider: React.FC<MagicProviderProps> = ({
+  children,
+  MarketPlaceInfo,
+  NFTInfo,
+  onToken,
+}) => {
   const [magic, setMagic] = useState<Magic | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const flowRef = useRef<any>();
@@ -51,89 +65,88 @@ export const MagicProvider: React.FC<{
     }
   }, []);
 
-  useEffect(() => {
-    if (magic) {
-      checkLoggedInMagic();
+  const checkLoggedInMagic = useCallback(async () => {
+    if (!magic) {
+      setIsLoggedIn(false);
+      return false;
     }
-  }, [magic]);
-
-  const checkLoggedInMagic = async () => {
     try {
-      const logged = await magic?.user.isLoggedIn();
+      const logged = await magic.user.isLoggedIn();
       setIsLoggedIn(Boolean(logged));
       return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
+      return false;
     }
-    setIsLoggedIn(false);
-    return false;
-  };
+  }, [magic]);
 
-  const loginEmailOTP = async ({
-    email,
-    events = {},
-  }: LoginEmailOTPType) => {
-    if (!magic) throw new Error("Magic not initialized");
+  useEffect(() => {
+    if (magic) void checkLoggedInMagic();
+  }, [magic, checkLoggedInMagic]);
 
-    try {
-      const flow = magic.auth.loginWithEmailOTP({
-        email,
-        deviceCheckUI: false,
-        showUI: false,
-      });
-      flowRef.current = flow;
-      Object.entries(events).forEach(([event, handler]) => {
-        if (handler) flow.on(event as any, handler as any);
-      });
+  const loginEmailOTP = useCallback(
+    async ({ email, events = {} }: LoginEmailOTPType) => {
+      if (!magic) throw new Error("Magic not initialized");
 
-      const token = await flow;
+      try {
+        const flow = magic.auth.loginWithEmailOTP({
+          email,
+          deviceCheckUI: false,
+          showUI: false,
+        });
+        flowRef.current = flow;
 
-      if (token) {
-        setIsLoggedIn(true);
+        Object.entries(events).forEach(([event, handler]) => {
+          if (handler) flow.on(event as any, handler as any);
+        });
+
+        const token = await flow;
+
+        if (token) {
+          onToken?.(token); // cho phép app tự lưu nếu muốn
+          setIsLoggedIn(true);
+        }
+
+        return token || null;
+      } catch (err) {
+        console.error("login error", err);
+        events.error?.(err);
+        return null;
+      } finally {
+        flowRef.current = undefined;
       }
+    },
+    [magic, onToken]
+  );
 
-      return token || null;
-    } catch (err) {
-      console.error("login error", err);
-      events.error?.(err);
-      return null;
-    } finally {
-      flowRef.current = undefined;
+  const verifyOTP = useCallback(async (OTP: string): Promise<void> => {
+    if (!OTP) {
+      const err: any = new Error("EMPTY_OTP");
+      err.code = "EMPTY_OTP";
+      throw err;
     }
-  };
+    if (!flowRef?.current) {
+      const err: any = new Error("NO_FLOW");
+      err.code = "NO_FLOW";
+      throw err;
+    }
+    await flowRef.current.emit("verify-email-otp", OTP);
+  }, []);
 
-// provider.tsx
-const verifyOTP = async (OTP: string): Promise<void> => {
-  if (!OTP) {
-    const err: any = new Error("EMPTY_OTP");
-    err.code = "EMPTY_OTP";
-    throw err;
-  }
-  if (!flowRef?.current) {
-    const err: any = new Error("NO_FLOW");
-    err.code = "NO_FLOW";
-    throw err;
-  }
-  await flowRef.current.emit("verify-email-otp", OTP);
-};
+  const cancelVerify = useCallback(async (): Promise<CancelVerifyResult> => {
+    if (!flowRef?.current) {
+      return { status: "no_flow", reason: "not_initialized" };
+    }
+    try {
+      await flowRef.current.emit("cancel");
+      return { status: "success" };
+    } catch (err) {
+      return { status: "error", error: err };
+    }
+  }, []);
 
-
-const cancelVerify = async (): Promise<CancelVerifyResult> => {
-  if (!flowRef?.current) {
-    return { status: "no_flow", reason: "not_initialized" };
-  }
-  try {
-    await flowRef.current.emit("cancel");
-    return { status: "success" };
-  } catch (err) {
-    return { status: "error", error: err };
-  }
-};
-
-
-
-  const logout = async () => {
+  const logout = useCallback(async () => {
     if (!magic) return;
     try {
       await magic.user.logout();
@@ -141,46 +154,45 @@ const cancelVerify = async (): Promise<CancelVerifyResult> => {
     } catch (err) {
       console.error("logout error", err);
     }
-  };
+  }, [magic]);
 
-  const convertBalance = (
-    value: BigNumberish,
-    fromUnit: EthUnit,
-    toUnit: EthUnit
-  ): string => {
-    const fromDecimals =
-      typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
-    const toDecimals =
-      typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
+  const convertBalance = useCallback(
+    (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit): string => {
+      const fromDecimals =
+        typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
+      const toDecimals =
+        typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
 
-    if (fromDecimals == null || toDecimals == null) {
-      throw new Error("Wrong Unit");
-    }
+      if (fromDecimals == null || toDecimals == null) {
+        throw new Error("Wrong Unit");
+      }
 
-    const inWei = parseUnits(value.toString(), fromDecimals);
-    return formatUnits(inWei, toDecimals);
-  };
+      const inWei = parseUnits(value.toString(), fromDecimals);
+      return formatUnits(inWei, toDecimals);
+    },
+    []
+  );
 
-  const getUserMetadata = async () => {
-    if (!magic) return null;
-    try {
-      const metadata = await magic.user.getInfo();
-      return metadata;
-    } catch (err) {
-      console.error("getUserMetadata error", err);
-      return null;
-    }
-  };
+  // const getUserMetadata = async () => {
+  //   if (!magic) return null;
+  //   try {
+  //     const metadata = await magic.user.getInfo();
+  //     return metadata;
+  //   } catch (err) {
+  //     console.error("getUserMetadata error", err);
+  //     return null;
+  //   }
+  // };
 
-  const getUserIdToken = async () => {
-    if (!magic) return null;
-    try {
-      const idToken = await magic.user.getIdToken();
-      return idToken
-    } catch (err) {
-      return null
-    }
-  }
+  // const getUserIdToken = async () => {
+  //   if (!magic) return null;
+  //   try {
+  //     const idToken = await magic.user.getIdToken();
+  //     return idToken
+  //   } catch (err) {
+  //     return null
+  //   }
+  // }
 
   const value = useMemo(
     () => ({
@@ -192,10 +204,17 @@ const cancelVerify = async (): Promise<CancelVerifyResult> => {
       cancelVerify,
       logout,
       convertBalance,
-      getUserMetadata,
-      getUserIdToken,
     }),
-    [magic]
+    [
+      magic,
+      isLoggedIn,
+      checkLoggedInMagic,
+      loginEmailOTP,
+      verifyOTP,
+      cancelVerify,
+      logout,
+      convertBalance,
+    ]
   );
 
   return (

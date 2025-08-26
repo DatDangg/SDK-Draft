@@ -22,12 +22,10 @@ type MagicContextValue = {
     magic: Magic | null;
     loginEmailOTP: (props: LoginEmailOTPType) => Promise<string | null>;
     logout: () => Promise<void>;
-    getUserMetadata: () => Promise<any | null>;
     isLoggedIn: boolean | null;
     checkLoggedInMagic: () => Promise<boolean>;
     verifyOTP?: (OTP: string) => Promise<void>;
     cancelVerify?: () => Promise<CancelVerifyResult>;
-    getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 type EssentialLoginEvents = Partial<{
@@ -60,15 +58,12 @@ interface Web3ContextType {
     nftContract: ethers.Contract | null;
     loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
     verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
-    isLoggedMagic: boolean;
     isSendingOTP: boolean;
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;
     magic: Magic | null;
     cancelVerify: () => Promise<CancelVerifyResult | void>;
     checkLoggedInMagic: () => Promise<boolean>;
-    resetOTPCount: () => void;
-    getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 }
 type CancelVerifyResult = {
@@ -81,11 +76,18 @@ type CancelVerifyResult = {
     error: unknown;
 };
 
-declare const MagicProvider: React.FC<{
+type MagicProviderProps = {
     children: ReactNode;
     MarketPlaceInfo: MarketPlaceInfo;
     NFTInfo: NFTInfo;
-}>;
+    /** publishable key của Magic — bắt buộc khi đóng gói SDK */
+    magicKey: string;
+    /** tuỳ chọn khác khi init Magic (network, locale, extensions, ...) */
+    magicOptions?: Record<string, any>;
+    /** callback để SDK báo cho app token/didToken nếu bạn cần tự lưu */
+    onToken?: (token: string) => void;
+};
+declare const MagicProvider: React.FC<MagicProviderProps>;
 
 declare const useWeb3: () => Web3ContextType;
 

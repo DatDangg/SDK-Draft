@@ -5,7 +5,8 @@ import {
   useEffect as useEffect2,
   useMemo as useMemo2,
   useRef,
-  useState as useState2
+  useState as useState2,
+  useCallback as useCallback2
 } from "react";
 
 // src/magicClient.ts
@@ -112,7 +113,6 @@ import Cookies from "js-cookie";
 
 // src/constants/common.ts
 var MAGIC_AUTH = "MAGIC_AUTH";
-var LOGGED_MAGIC = "LOGGED_MAGIC";
 
 // src/Web3Provider.tsx
 import { jsx } from "react/jsx-runtime";
@@ -123,7 +123,7 @@ var Web3Context = React.createContext({
   nftContract: null,
   loginMagic: null,
   verifyOTPMagic: null,
-  isLoggedMagic: false,
+  // isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: async () => {
@@ -131,9 +131,8 @@ var Web3Context = React.createContext({
   magic: null,
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
-  resetOTPCount: () => {
-  },
-  getUserIdToken: async () => null,
+  // resetOTPCount: () => {},
+  // getUserIdToken: async () => null,
   convertBalance: () => ""
 });
 var useWeb3 = () => useContext(Web3Context);
@@ -146,23 +145,19 @@ function Web3Provider({
   const [ethersSigner, setEtherSigner] = useState(null);
   const [marketContract, setMarketContract] = useState(null);
   const [nftContract, setNftContract] = useState(null);
-  const [isLoggedMagic, setLoggedMagic] = useState(Boolean(Cookies.get(LOGGED_MAGIC)));
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
-  const [otpCount, setOTPCount] = useState(0);
   const {
     magic,
+    isLoggedIn,
     loginEmailOTP,
     checkLoggedInMagic,
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
-    getUserIdToken,
     convertBalance
   } = useMagic();
-  const resetOTPCount = useCallback(() => {
-    setOTPCount(0);
-  }, []);
+  const isLoggedMagic = Boolean(isLoggedIn);
   const loginMagic = useCallback(
     async ({
       email,
@@ -215,9 +210,7 @@ function Web3Provider({
           return;
         }
         Cookies.set(MAGIC_AUTH, JSON.stringify({ token: didToken }));
-        setLoggedMagic(true);
         onSuccess?.();
-        setOTPCount(0);
       } catch (err) {
         console.log(err);
         onFail?.();
@@ -231,17 +224,19 @@ function Web3Provider({
       if (otp.length !== 6)
         return;
       setIsVerifyingOTP(true);
-      const result = await verifyOTP?.(otp);
-      return result;
+      try {
+        const result = await verifyOTP?.(otp);
+        return result;
+      } finally {
+        setIsVerifyingOTP(false);
+      }
     },
-    [verifyOTP, otpCount]
+    [verifyOTP]
   );
   const disconnectWallet = useCallback(async () => {
     if (magic) {
       await logoutMagic();
-      setLoggedMagic(false);
       Cookies.remove(MAGIC_AUTH);
-      Cookies.remove(LOGGED_MAGIC);
     }
   }, [magic, logoutMagic]);
   useEffect(() => {
@@ -268,22 +263,44 @@ function Web3Provider({
     }
   }, [magic, isLoggedMagic]);
   useEffect(() => {
-    if (magic) {
-      const checkWalletConnection = async () => {
-        try {
-          const logged = await checkLoggedInMagic();
-          setLoggedMagic(logged);
-          if (logged) {
-            Cookies.set(LOGGED_MAGIC, "true");
-          } else {
-            Cookies.remove(LOGGED_MAGIC);
-          }
-        } catch (error) {
-        }
-      };
-      checkWalletConnection();
+    if (!magic || !isLoggedMagic) {
+      setEtherProvider(null);
+      setEtherSigner(null);
+      setMarketContract(null);
+      setNftContract(null);
+      return;
     }
-  }, [magic]);
+    let mounted = true;
+    const initEthers = async () => {
+      const provider = new ethers.BrowserProvider(magic.rpcProvider);
+      const signer = await provider.getSigner();
+      const market = new ethers.Contract(
+        MarketPlaceInfo.address,
+        MarketPlaceInfo.abi,
+        signer
+      );
+      const nft = new ethers.Contract(
+        NFTInfo.address,
+        NFTInfo.abi,
+        signer
+      );
+      if (!mounted)
+        return;
+      setEtherProvider(provider);
+      setEtherSigner(signer);
+      setMarketContract(market);
+      setNftContract(nft);
+    };
+    void initEthers();
+    return () => {
+      mounted = false;
+    };
+  }, [magic, isLoggedMagic, MarketPlaceInfo, NFTInfo]);
+  useEffect(() => {
+    if (!magic)
+      return;
+    void checkLoggedInMagic();
+  }, [magic, checkLoggedInMagic]);
   const values = useMemo(
     () => ({
       magic,
@@ -300,8 +317,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      resetOTPCount,
-      getUserIdToken,
+      // resetOTPCount,
+      // getUserIdToken,
       convertBalance
     }),
     [
@@ -319,8 +336,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      resetOTPCount,
-      getUserIdToken,
+      // resetOTPCount,
+      // getUserIdToken,
       convertBalance
     ]
   );
@@ -338,7 +355,12 @@ var useMagic = () => {
     throw new Error("useMagic must be used within MagicProvider");
   return ctx;
 };
-var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
+var MagicProvider = ({
+  children,
+  MarketPlaceInfo,
+  NFTInfo,
+  onToken
+}) => {
   const [magic, setMagic] = useState2(null);
   const [isLoggedIn, setIsLoggedIn] = useState2(null);
   const flowRef = useRef();
@@ -351,54 +373,57 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       setMagic(null);
     }
   }, []);
-  useEffect2(() => {
-    if (magic) {
-      checkLoggedInMagic();
+  const checkLoggedInMagic = useCallback2(async () => {
+    if (!magic) {
+      setIsLoggedIn(false);
+      return false;
     }
-  }, [magic]);
-  const checkLoggedInMagic = async () => {
     try {
-      const logged = await magic?.user.isLoggedIn();
+      const logged = await magic.user.isLoggedIn();
       setIsLoggedIn(Boolean(logged));
       return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
+      return false;
     }
-    setIsLoggedIn(false);
-    return false;
-  };
-  const loginEmailOTP = async ({
-    email,
-    events = {}
-  }) => {
-    if (!magic)
-      throw new Error("Magic not initialized");
-    try {
-      const flow = magic.auth.loginWithEmailOTP({
-        email,
-        deviceCheckUI: false,
-        showUI: false
-      });
-      flowRef.current = flow;
-      Object.entries(events).forEach(([event, handler]) => {
-        if (handler)
-          flow.on(event, handler);
-      });
-      const token = await flow;
-      if (token) {
-        setIsLoggedIn(true);
+  }, [magic]);
+  useEffect2(() => {
+    if (magic)
+      void checkLoggedInMagic();
+  }, [magic, checkLoggedInMagic]);
+  const loginEmailOTP = useCallback2(
+    async ({ email, events = {} }) => {
+      if (!magic)
+        throw new Error("Magic not initialized");
+      try {
+        const flow = magic.auth.loginWithEmailOTP({
+          email,
+          deviceCheckUI: false,
+          showUI: false
+        });
+        flowRef.current = flow;
+        Object.entries(events).forEach(([event, handler]) => {
+          if (handler)
+            flow.on(event, handler);
+        });
+        const token = await flow;
+        if (token) {
+          onToken?.(token);
+          setIsLoggedIn(true);
+        }
+        return token || null;
+      } catch (err) {
+        console.error("login error", err);
+        events.error?.(err);
+        return null;
+      } finally {
+        flowRef.current = void 0;
       }
-      return token || null;
-    } catch (err) {
-      console.error("login error", err);
-      events.error?.(err);
-      return null;
-    } finally {
-      flowRef.current = void 0;
-    }
-  };
-  const verifyOTP = async (OTP) => {
+    },
+    [magic, onToken]
+  );
+  const verifyOTP = useCallback2(async (OTP) => {
     if (!OTP) {
       const err = new Error("EMPTY_OTP");
       err.code = "EMPTY_OTP";
@@ -410,8 +435,8 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       throw err;
     }
     await flowRef.current.emit("verify-email-otp", OTP);
-  };
-  const cancelVerify = async () => {
+  }, []);
+  const cancelVerify = useCallback2(async () => {
     if (!flowRef?.current) {
       return { status: "no_flow", reason: "not_initialized" };
     }
@@ -421,8 +446,8 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     } catch (err) {
       return { status: "error", error: err };
     }
-  };
-  const logout = async () => {
+  }, []);
+  const logout = useCallback2(async () => {
     if (!magic)
       return;
     try {
@@ -431,37 +456,19 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     } catch (err) {
       console.error("logout error", err);
     }
-  };
-  const convertBalance = (value2, fromUnit, toUnit) => {
-    const fromDecimals = typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
-    const toDecimals = typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
-    if (fromDecimals == null || toDecimals == null) {
-      throw new Error("Wrong Unit");
-    }
-    const inWei = parseUnits(value2.toString(), fromDecimals);
-    return formatUnits(inWei, toDecimals);
-  };
-  const getUserMetadata = async () => {
-    if (!magic)
-      return null;
-    try {
-      const metadata = await magic.user.getInfo();
-      return metadata;
-    } catch (err) {
-      console.error("getUserMetadata error", err);
-      return null;
-    }
-  };
-  const getUserIdToken = async () => {
-    if (!magic)
-      return null;
-    try {
-      const idToken = await magic.user.getIdToken();
-      return idToken;
-    } catch (err) {
-      return null;
-    }
-  };
+  }, [magic]);
+  const convertBalance = useCallback2(
+    (value2, fromUnit, toUnit) => {
+      const fromDecimals = typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
+      const toDecimals = typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
+      if (fromDecimals == null || toDecimals == null) {
+        throw new Error("Wrong Unit");
+      }
+      const inWei = parseUnits(value2.toString(), fromDecimals);
+      return formatUnits(inWei, toDecimals);
+    },
+    []
+  );
   const value = useMemo2(
     () => ({
       magic,
@@ -471,11 +478,18 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       verifyOTP,
       cancelVerify,
       logout,
-      convertBalance,
-      getUserMetadata,
-      getUserIdToken
+      convertBalance
     }),
-    [magic]
+    [
+      magic,
+      isLoggedIn,
+      checkLoggedInMagic,
+      loginEmailOTP,
+      verifyOTP,
+      cancelVerify,
+      logout,
+      convertBalance
+    ]
   );
   return /* @__PURE__ */ jsx2(MagicContext.Provider, { value, children: /* @__PURE__ */ jsx2(Web3Provider_default, { MarketPlaceInfo, NFTInfo, children }) });
 };
