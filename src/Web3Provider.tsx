@@ -131,36 +131,17 @@ function Web3Provider({
     },
     [loginEmailOTP]
   );
-  const callIdRef = React.useRef(0);
-const verifyOTPMagic = useCallback(
+
+  const verifyOTPMagic = useCallback(
     async (otp: string) => {
-
-      if (otp.length !== 6) {
-        // không bật loading vì chưa verify
-        return { ok: false, reason: "OTP_INVALID_LENGTH" as const };
-      }
-      if (!verifyOTP) {
-        return { ok: false, reason: "VERIFY_FN_MISSING" as const };
-      }
-
-      setIsVerifyingOTP(true);
-      const myCall = ++callIdRef.current;
-
-      try {
-        const res = await verifyOTP(otp); // giờ verifyOTP trả {ok: boolean, ...}
-        if (myCall !== callIdRef.current) return { ok: false, reason: "STALE_RESULT" as const };
-        // KHÔNG setIsVerifyingOTP(false) tại đây — vì các event (invalid, expired, done, error)
-        // đã đảm nhiệm reset flag. Tuy nhiên, để chắc cú, ta vẫn hạ flag ở finally.
-        return res;
-      } catch (e) {
-        return { ok: false, reason: "UNKNOWN_ERROR" as const };
-      } finally {
-        // fallback: nếu vì lý do gì events không bắn, vẫn hạ cờ cho lần gọi gần nhất
-        if (myCall === callIdRef.current) setIsVerifyingOTP(false);
-      }
+      if (otp.length !== 6) return;
+        setIsVerifyingOTP(true);
+        const result = await verifyOTP?.(otp);
+        return result;
     },
-    [verifyOTP]
+    [verifyOTP, otpCount]
   );
+
   const disconnectWallet = useCallback(async () => {
     if (magic) {
       await logoutMagic();
@@ -194,7 +175,7 @@ const verifyOTPMagic = useCallback(
       };
       checkEthers();
     }
-  }, [magic, isLoggedMagic, MarketPlaceInfo, NFTInfo]);
+  }, [magic, isLoggedMagic]);
 
 // ==============================================
   useEffect(() => {
@@ -213,7 +194,7 @@ const verifyOTPMagic = useCallback(
 
       checkWalletConnection();
     }
-  }, [magic, checkLoggedInMagic]);
+  }, [magic]);
 
   const values = useMemo(
     () => ({

@@ -14,21 +14,6 @@ type MarketPlaceInfo = {
     address: string;
     abi: any;
 };
-/**
- * Kết quả verify OTP (dùng chung cho cả Provider.verifyOTP và Web3.verifyOTPMagic)
- * - Provider.verifyOTP hiện chỉ phát "verify-email-otp" => có thể trả { ok:false, reason: "NO_FLOW" | "EMIT_FAILED" | "EMPTY_OTP" }
- * - Web3.verifyOTPMagic có thêm kiểm tra length/normalize/timeouts/race => union mở rộng bên dưới
- */
-type VerifyOtpReason = "EMPTY_OTP" | "NO_FLOW" | "EMIT_FAILED" | "OTP_INVALID_LENGTH" | "VERIFY_FN_MISSING" | "STALE_RESULT" | "TIMEOUT" | "UNKNOWN_ERROR";
-type VerifyOtpOk = {
-    ok: true;
-};
-type VerifyOtpErr = {
-    ok: false;
-    reason: VerifyOtpReason;
-    error?: unknown;
-};
-type VerifyOtpResult = VerifyOtpOk | VerifyOtpErr;
 type LoginEmailOTPType = {
     email: string;
     events: EssentialLoginEvents;
@@ -40,11 +25,7 @@ type MagicContextValue = {
     getUserMetadata: () => Promise<any | null>;
     isLoggedIn: boolean | null;
     checkLoggedInMagic: () => Promise<boolean>;
-    /**
-     * Provider-side verify: chỉ emit("verify-email-otp", OTP) vào flow hiện tại.
-     * Trả về VerifyOtpResult có cấu trúc (không throw).
-     */
-    verifyOTP?: (OTP: string) => Promise<VerifyOtpResult>;
+    verifyOTP?: (OTP: string) => Promise<void>;
     cancelVerify?: () => Promise<CancelVerifyResult>;
     getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
@@ -78,13 +59,7 @@ interface Web3ContextType {
     marketContract: ethers.Contract | null;
     nftContract: ethers.Contract | null;
     loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-    /**
-     * Web3-level verify: normalize OTP, chống race, timeout fallback…
-     * → luôn trả VerifyOtpResult (không throw), để app ngoài switch-case dễ dàng.
-     *
-     * (Breaking change so với bản cũ: trước là Promise<void>)
-     */
-    verifyOTPMagic: ((otp: string) => Promise<VerifyOtpResult>) | null;
+    verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
     isLoggedMagic: boolean;
     isSendingOTP: boolean;
     isVerifyingOTP: boolean;
