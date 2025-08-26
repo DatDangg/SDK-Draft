@@ -1,5 +1,5 @@
 // src/provider.tsx
-import {
+import React2, {
   createContext,
   useContext as useContext2,
   useEffect as useEffect2,
@@ -219,21 +219,37 @@ function Web3Provider({
         onSuccess?.();
         setOTPCount(0);
       } catch (err) {
+        console.log(err);
         onFail?.();
         setIsSendingOTP(false);
       }
     },
     [loginEmailOTP]
   );
+  const callIdRef = React.useRef(0);
   const verifyOTPMagic = useCallback(
     async (otp) => {
-      if (otp.length !== 6)
-        return;
+      if (otp.length !== 6) {
+        return { ok: false, reason: "OTP_INVALID_LENGTH" };
+      }
+      if (!verifyOTP) {
+        return { ok: false, reason: "VERIFY_FN_MISSING" };
+      }
       setIsVerifyingOTP(true);
-      const result = await verifyOTP?.(otp);
-      return result;
+      const myCall = ++callIdRef.current;
+      try {
+        const res = await verifyOTP(otp);
+        if (myCall !== callIdRef.current)
+          return { ok: false, reason: "STALE_RESULT" };
+        return res;
+      } catch (e) {
+        return { ok: false, reason: "UNKNOWN_ERROR" };
+      } finally {
+        if (myCall === callIdRef.current)
+          setIsVerifyingOTP(false);
+      }
     },
-    [verifyOTP, otpCount]
+    [verifyOTP]
   );
   const disconnectWallet = useCallback(async () => {
     if (magic) {
@@ -265,7 +281,7 @@ function Web3Provider({
       };
       checkEthers();
     }
-  }, [magic, isLoggedMagic]);
+  }, [magic, isLoggedMagic, MarketPlaceInfo, NFTInfo]);
   useEffect(() => {
     if (magic) {
       const checkWalletConnection = async () => {
@@ -282,7 +298,7 @@ function Web3Provider({
       };
       checkWalletConnection();
     }
-  }, [magic]);
+  }, [magic, checkLoggedInMagic]);
   const values = useMemo(
     () => ({
       magic,
@@ -355,7 +371,7 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       checkLoggedInMagic();
     }
   }, [magic]);
-  const checkLoggedInMagic = async () => {
+  const checkLoggedInMagic = React2.useCallback(async () => {
     try {
       const logged = await magic?.user.isLoggedIn();
       setIsLoggedIn(Boolean(logged));
@@ -363,10 +379,9 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
+      return false;
     }
-    setIsLoggedIn(false);
-    return false;
-  };
+  }, [magic]);
   const loginEmailOTP = async ({
     email,
     events = {}
@@ -398,11 +413,19 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
     }
   };
   const verifyOTP = async (OTP) => {
-    if (flowRef?.current && OTP) {
-      const res = await flowRef?.current?.emit("verify-email-otp", OTP);
-      return res;
+    if (!OTP)
+      return { ok: false, reason: "EMPTY_OTP" };
+    if (!flowRef?.current) {
+      console.error("verifyOTP error: must send OTP first");
+      return { ok: false, reason: "NO_FLOW" };
     }
-    console.error("verifyOTP error: must send OTP first");
+    try {
+      await flowRef.current.emit("verify-email-otp", OTP);
+      return { ok: true };
+    } catch (err) {
+      console.error("verifyOTP emit failed", err);
+      return { ok: false, reason: "EMIT_FAILED", error: err };
+    }
   };
   const cancelVerify = async () => {
     if (!flowRef?.current) {

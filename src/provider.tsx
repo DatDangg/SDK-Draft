@@ -57,18 +57,17 @@ export const MagicProvider: React.FC<{
     }
   }, [magic]);
 
-  const checkLoggedInMagic = async () => {
-    try {
-      const logged = await magic?.user.isLoggedIn();
-      setIsLoggedIn(Boolean(logged));
-      return Boolean(logged);
-    } catch (err) {
-      console.warn("isLoggedIn check failed", err);
-      setIsLoggedIn(false);
-    }
+const checkLoggedInMagic = React.useCallback(async () => {
+  try {
+    const logged = await magic?.user.isLoggedIn();
+    setIsLoggedIn(Boolean(logged));
+    return Boolean(logged);
+  } catch (err) {
+    console.warn("isLoggedIn check failed", err);
     setIsLoggedIn(false);
     return false;
-  };
+  }
+}, [magic]);
 
   const loginEmailOTP = async ({
     email,
@@ -103,30 +102,37 @@ export const MagicProvider: React.FC<{
     }
   };
 
-  const verifyOTP = async (OTP: string) => {
-    if (flowRef?.current && OTP) {
-      const res = await flowRef?.current?.emit("verify-email-otp", OTP);
-      return res;
-    }
-    console.error("verifyOTP error: must send OTP first");
-  };
+type VerifyOtpResult =
+  | { ok: true }
+  | { ok: false; reason: "NO_FLOW" | "EMPTY_OTP" | "EMIT_FAILED"; error?: unknown };
 
-// types.ts (hoặc cùng file)
-
-// Giữ nguyên flowRef như bạn đang có
-const cancelVerify = async (): Promise<CancelVerifyResult> => {
+const verifyOTP = async (OTP: string): Promise<VerifyOtpResult> => {
+  if (!OTP) return { ok: false, reason: "EMPTY_OTP" };
   if (!flowRef?.current) {
-    return { status: "no_flow", reason: "not_initialized" };
+    console.error("verifyOTP error: must send OTP first");
+    return { ok: false, reason: "NO_FLOW" };
   }
   try {
-    await flowRef.current.emit("cancel");
-    return { status: "success" };
+    // Chỉ emit – kết quả thật sẽ tới qua event 'done' / 'invalid-email-otp' ... đã đăng ký ở loginEmailOTP
+    await flowRef.current.emit("verify-email-otp", OTP);
+    return { ok: true };
   } catch (err) {
-    return { status: "error", error: err };
+    console.error("verifyOTP emit failed", err);
+    return { ok: false, reason: "EMIT_FAILED", error: err };
   }
 };
 
-
+  const cancelVerify = async (): Promise<CancelVerifyResult> => {
+    if (!flowRef?.current) {
+      return { status: "no_flow", reason: "not_initialized" };
+    }
+    try {
+      await flowRef.current.emit("cancel");
+      return { status: "success" };
+    } catch (err) {
+      return { status: "error", error: err };
+    }
+  };
 
   const logout = async () => {
     if (!magic) return;
