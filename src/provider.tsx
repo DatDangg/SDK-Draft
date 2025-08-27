@@ -35,19 +35,12 @@ type MagicProviderProps = {
   children: ReactNode;
   MarketPlaceInfo: MarketPlaceInfo;
   NFTInfo: NFTInfo;
-  /** publishable key của Magic — bắt buộc khi đóng gói SDK */
-  magicKey: string;
-  /** tuỳ chọn khác khi init Magic (network, locale, extensions, ...) */
-  magicOptions?: Record<string, any>;
-  /** callback để SDK báo cho app token/didToken nếu bạn cần tự lưu */
-  onToken?: (token: string) => void;
 };
 
 export const MagicProvider: React.FC<MagicProviderProps> = ({
   children,
   MarketPlaceInfo,
   NFTInfo,
-  onToken,
 }) => {
   const [magic, setMagic] = useState<Magic | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -104,7 +97,6 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
         const token = await flow;
 
         if (token) {
-          onToken?.(token); // cho phép app tự lưu nếu muốn
           setIsLoggedIn(true);
         }
 
@@ -117,7 +109,7 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
         flowRef.current = undefined;
       }
     },
-    [magic, onToken]
+    [magic]
   );
 
   const verifyOTP = useCallback(async (OTP: string): Promise<void> => {

@@ -80,12 +80,6 @@ type MagicProviderProps = {
     children: ReactNode;
     MarketPlaceInfo: MarketPlaceInfo;
     NFTInfo: NFTInfo;
-    /** publishable key của Magic — bắt buộc khi đóng gói SDK */
-    magicKey: string;
-    /** tuỳ chọn khác khi init Magic (network, locale, extensions, ...) */
-    magicOptions?: Record<string, any>;
-    /** callback để SDK báo cho app token/didToken nếu bạn cần tự lưu */
-    onToken?: (token: string) => void;
 };
 declare const MagicProvider: React.FC<MagicProviderProps>;
 

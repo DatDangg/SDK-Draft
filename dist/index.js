@@ -377,8 +377,7 @@ var useMagic = () => {
 var MagicProvider = ({
   children,
   MarketPlaceInfo,
-  NFTInfo,
-  onToken
+  NFTInfo
 }) => {
   const [magic, setMagic] = (0, import_react2.useState)(null);
   const [isLoggedIn, setIsLoggedIn] = (0, import_react2.useState)(null);
@@ -428,7 +427,6 @@ var MagicProvider = ({
         });
         const token = await flow;
         if (token) {
-          onToken?.(token);
           setIsLoggedIn(true);
         }
         return token || null;
@@ -440,7 +438,7 @@ var MagicProvider = ({
         flowRef.current = void 0;
       }
     },
-    [magic, onToken]
+    [magic]
   );
   const verifyOTP = (0, import_react2.useCallback)(async (OTP) => {
     if (!OTP) {
