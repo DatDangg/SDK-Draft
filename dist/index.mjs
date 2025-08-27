@@ -117,22 +117,19 @@ var MAGIC_AUTH = "MAGIC_AUTH";
 // src/Web3Provider.tsx
 import { jsx } from "react/jsx-runtime";
 var Web3Context = React.createContext({
+  magic: null,
   ethersProvider: null,
   ethersSigner: null,
   marketContract: null,
   nftContract: null,
   loginMagic: null,
   verifyOTPMagic: null,
-  // isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: async () => {
   },
-  magic: null,
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
-  // resetOTPCount: () => {},
-  // getUserIdToken: async () => null,
   convertBalance: () => ""
 });
 var useWeb3 = () => useContext(Web3Context);
@@ -317,8 +314,6 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      // resetOTPCount,
-      // getUserIdToken,
       convertBalance
     }),
     [
@@ -336,8 +331,6 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      // resetOTPCount,
-      // getUserIdToken,
       convertBalance
     ]
   );

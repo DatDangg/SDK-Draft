@@ -12,21 +12,18 @@ import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
 import {  LoginMagicType, MarketPlaceInfo, NFTInfo, Web3ContextType } from "./types";
 
 export const Web3Context = React.createContext<Web3ContextType>({
+  magic: null,
   ethersProvider: null,
   ethersSigner: null,
   marketContract: null,
   nftContract: null,
   loginMagic: null,
   verifyOTPMagic: null,
-  // isLoggedMagic: false,
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: async () => {},
-  magic: null,
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
-  // resetOTPCount: () => {},
-  // getUserIdToken: async () => null,
   convertBalance: () => "",
 });
 
@@ -143,7 +140,6 @@ function Web3Provider({
     if (magic) {
       await logoutMagic();
       Cookies.remove(MAGIC_AUTH);
-      // Cookies.remove(LOGGED_MAGIC);
     }
   }, [magic, logoutMagic]);
   
@@ -233,8 +229,6 @@ useEffect(() => {
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      // resetOTPCount,
-      // getUserIdToken,
       convertBalance
     }),
     [
@@ -252,8 +246,6 @@ useEffect(() => {
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      // resetOTPCount,
-      // getUserIdToken,
       convertBalance
     ]
   );
