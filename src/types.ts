@@ -2,6 +2,7 @@
 import type { OAuthExtension } from "@magic-ext/oauth";
 import { BigNumberish, ethers } from "ethers";
 import type { Magic as MagicBase } from "magic-sdk";
+import { ReactNode } from "react";
 
 export type Magic = MagicBase<OAuthExtension[]>;
 
@@ -35,7 +36,7 @@ export type MagicContextValue = {
   checkLoggedInMagic: () => Promise<boolean>;
   verifyOTP?: (OTP: string) => Promise<void>;
   cancelVerify?: () => Promise<CancelVerifyResult>;
-  // getUserIdToken: () => Promise<string | null>
+  getUserIdToken: () => Promise<string | null>
   convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 
@@ -85,7 +86,7 @@ export interface Web3ContextType {
   cancelVerify: () => Promise<CancelVerifyResult | void>;
   checkLoggedInMagic: () => Promise<boolean>;
   // resetOTPCount: () => void;
-  // getUserIdToken: () => Promise<string | null>;
+  getUserIdToken: () => Promise<string | null>;
   convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 }
 
@@ -93,3 +94,10 @@ export type CancelVerifyResult =
   | { status: "success" }
   | { status: "no_flow"; reason: "not_initialized" }
   | { status: "error"; error: unknown };
+  
+
+export type MagicProviderProps = {
+  children: ReactNode;
+  MarketPlaceInfo: MarketPlaceInfo;
+  NFTInfo: NFTInfo;
+};

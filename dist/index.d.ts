@@ -26,6 +26,7 @@ type MagicContextValue = {
     checkLoggedInMagic: () => Promise<boolean>;
     verifyOTP?: (OTP: string) => Promise<void>;
     cancelVerify?: () => Promise<CancelVerifyResult>;
+    getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 };
 type EssentialLoginEvents = Partial<{
@@ -64,6 +65,7 @@ interface Web3ContextType {
     magic: Magic | null;
     cancelVerify: () => Promise<CancelVerifyResult | void>;
     checkLoggedInMagic: () => Promise<boolean>;
+    getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
 }
 type CancelVerifyResult = {
@@ -75,12 +77,12 @@ type CancelVerifyResult = {
     status: "error";
     error: unknown;
 };
-
 type MagicProviderProps = {
     children: ReactNode;
     MarketPlaceInfo: MarketPlaceInfo;
     NFTInfo: NFTInfo;
 };
+
 declare const MagicProvider: React.FC<MagicProviderProps>;
 
 declare const useWeb3: () => Web3ContextType;

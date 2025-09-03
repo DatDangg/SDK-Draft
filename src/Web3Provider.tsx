@@ -8,8 +8,8 @@ import React, {
   useState,
 } from "react";
 import Cookies from "js-cookie";
-import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
-import {  LoginMagicType, MarketPlaceInfo, NFTInfo, Web3ContextType } from "./types";
+import { MAGIC_AUTH } from "./constants/common";
+import { LoginMagicType, MarketPlaceInfo, NFTInfo, Web3ContextType } from "./types";
 
 export const Web3Context = React.createContext<Web3ContextType>({
   magic: null,
@@ -25,6 +25,7 @@ export const Web3Context = React.createContext<Web3ContextType>({
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
   convertBalance: () => "",
+  getUserIdToken: async () => null,
 });
 
 export const useWeb3 = () => useContext(Web3Context);
@@ -55,7 +56,8 @@ function Web3Provider({
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
-    convertBalance
+    convertBalance,
+    getUserIdToken
   } = useMagic();
 
   const isLoggedMagic = Boolean(isLoggedIn)
@@ -229,7 +231,8 @@ useEffect(() => {
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      convertBalance
+      convertBalance,
+      getUserIdToken
     }),
     [
       magic,
@@ -246,7 +249,8 @@ useEffect(() => {
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      convertBalance
+      convertBalance,
+      getUserIdToken
     ]
   );
 

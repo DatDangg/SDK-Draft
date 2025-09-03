@@ -156,7 +156,8 @@ var Web3Context = import_react.default.createContext({
   },
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
-  convertBalance: () => ""
+  convertBalance: () => "",
+  getUserIdToken: async () => null
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
 function Web3Provider({
@@ -178,7 +179,8 @@ function Web3Provider({
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
-    convertBalance
+    convertBalance,
+    getUserIdToken
   } = useMagic();
   const isLoggedMagic = Boolean(isLoggedIn);
   const loginMagic = (0, import_react.useCallback)(
@@ -340,7 +342,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify: cancelVerify ?? (() => Promise.resolve()),
       checkLoggedInMagic,
-      convertBalance
+      convertBalance,
+      getUserIdToken
     }),
     [
       magic,
@@ -357,7 +360,8 @@ function Web3Provider({
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
-      convertBalance
+      convertBalance,
+      getUserIdToken
     ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Web3Context.Provider, { value: values, children });
@@ -486,6 +490,16 @@ var MagicProvider = ({
     },
     []
   );
+  const getUserIdToken = async () => {
+    if (!magic)
+      return null;
+    try {
+      const idToken = await magic.user.getIdToken();
+      return idToken;
+    } catch (err) {
+      return null;
+    }
+  };
   const value = (0, import_react2.useMemo)(
     () => ({
       magic,
@@ -495,7 +509,8 @@ var MagicProvider = ({
       verifyOTP,
       cancelVerify,
       logout,
-      convertBalance
+      convertBalance,
+      getUserIdToken
     }),
     [
       magic,
@@ -505,7 +520,8 @@ var MagicProvider = ({
       verifyOTP,
       cancelVerify,
       logout,
-      convertBalance
+      convertBalance,
+      getUserIdToken
     ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MagicContext.Provider, { value, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Web3Provider_default, { MarketPlaceInfo, NFTInfo, children }) });

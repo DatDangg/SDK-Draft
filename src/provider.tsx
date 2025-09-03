@@ -1,6 +1,5 @@
 // src/provider.tsx
 import React, {
-  ReactNode,
   createContext,
   useContext,
   useEffect,
@@ -12,13 +11,12 @@ import React, {
 import { initMagic } from "./magicClient";
 import {
   CancelVerifyResult,
+  MagicProviderProps,
   UNIT_DECIMALS,
   type EthUnit,
   type LoginEmailOTPType,
   type Magic,
   type MagicContextValue,
-  type MarketPlaceInfo,
-  type NFTInfo,
 } from "./types";
 import Web3Provider from "./Web3Provider";
 import { parseUnits, formatUnits, BigNumberish } from "ethers";
@@ -29,12 +27,6 @@ export const useMagic = (): MagicContextValue => {
   const ctx = useContext(MagicContext);
   if (!ctx) throw new Error("useMagic must be used within MagicProvider");
   return ctx;
-};
-
-type MagicProviderProps = {
-  children: ReactNode;
-  MarketPlaceInfo: MarketPlaceInfo;
-  NFTInfo: NFTInfo;
 };
 
 export const MagicProvider: React.FC<MagicProviderProps> = ({
@@ -176,15 +168,15 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
   //   }
   // };
 
-  // const getUserIdToken = async () => {
-  //   if (!magic) return null;
-  //   try {
-  //     const idToken = await magic.user.getIdToken();
-  //     return idToken
-  //   } catch (err) {
-  //     return null
-  //   }
-  // }
+  const getUserIdToken = async () => {
+    if (!magic) return null;
+    try {
+      const idToken = await magic.user.getIdToken();
+      return idToken
+    } catch (err) {
+      return null
+    }
+  }
 
   const value = useMemo(
     () => ({
@@ -196,6 +188,7 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
       cancelVerify,
       logout,
       convertBalance,
+      getUserIdToken
     }),
     [
       magic,
@@ -206,6 +199,7 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
       cancelVerify,
       logout,
       convertBalance,
+      getUserIdToken
     ]
   );
 
