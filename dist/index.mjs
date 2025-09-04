@@ -55,7 +55,7 @@ var getNetworkUrl = (network, apiKey) => {
     case "zksync-sepolia" /* ZKSYNC_SEPOLIA */:
       return "https://zksync-era-sepolia.blockpi.network/v1/rpc/public";
     case "soneium" /* SONEIUM */:
-      return `https://soneium-minato.rpc.scs.startale.com?apikey=${apiKey}`;
+      return `https://soneium-minato.g.alchemy.com/v2/bcrBY4ATH4SxyoPmL1bym`;
     default:
       throw new Error("Network not supported");
   }
