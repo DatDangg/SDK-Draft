@@ -121,6 +121,7 @@ function Web3Provider({
   } = useMagic();
 
   const isLoggedMagic = useMemo(() => {
+    console.log("isLoggedIn", isLoggedIn )
     return Boolean(isLoggedIn)
   }, [isLoggedIn]);
 
@@ -483,6 +484,7 @@ function Web3Provider({
       getEthBalance,
       estimateTransfer,
       transferETH,
+      isLoggedMagic
     ]
   );
 

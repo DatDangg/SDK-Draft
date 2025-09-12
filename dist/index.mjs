@@ -163,6 +163,7 @@ function Web3Provider({
     isLoggedIn
   } = useMagic();
   const isLoggedMagic = useMemo(() => {
+    console.log("isLoggedIn", isLoggedIn);
     return Boolean(isLoggedIn);
   }, [isLoggedIn]);
   const loginMagic = useCallback(
@@ -479,7 +480,8 @@ function Web3Provider({
       getNFTInfo,
       getEthBalance,
       estimateTransfer,
-      transferETH
+      transferETH,
+      isLoggedMagic
     ]
   );
   return /* @__PURE__ */ jsx(Web3Context.Provider, { value: values, children });

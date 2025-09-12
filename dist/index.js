@@ -190,6 +190,7 @@ function Web3Provider({
     isLoggedIn
   } = useMagic();
   const isLoggedMagic = (0, import_react.useMemo)(() => {
+    console.log("isLoggedIn", isLoggedIn);
     return Boolean(isLoggedIn);
   }, [isLoggedIn]);
   const loginMagic = (0, import_react.useCallback)(
@@ -506,7 +507,8 @@ function Web3Provider({
       getNFTInfo,
       getEthBalance,
       estimateTransfer,
-      transferETH
+      transferETH,
+      isLoggedMagic
     ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Web3Context.Provider, { value: values, children });
