@@ -162,7 +162,9 @@ function Web3Provider({
     convertBalance,
     isLoggedIn
   } = useMagic();
-  const isLoggedMagic = Boolean(isLoggedIn);
+  const isLoggedMagic = useMemo(() => {
+    return Boolean(isLoggedIn);
+  }, [isLoggedIn]);
   const loginMagic = useCallback(
     async ({
       email,

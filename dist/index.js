@@ -189,7 +189,9 @@ function Web3Provider({
     convertBalance,
     isLoggedIn
   } = useMagic();
-  const isLoggedMagic = Boolean(isLoggedIn);
+  const isLoggedMagic = (0, import_react.useMemo)(() => {
+    return Boolean(isLoggedIn);
+  }, [isLoggedIn]);
   const loginMagic = (0, import_react.useCallback)(
     async ({
       email,

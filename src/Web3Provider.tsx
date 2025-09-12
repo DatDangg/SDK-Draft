@@ -120,7 +120,9 @@ function Web3Provider({
     isLoggedIn
   } = useMagic();
 
-  const isLoggedMagic = Boolean(isLoggedIn)
+  const isLoggedMagic = useMemo(() => {
+    return Boolean(isLoggedIn)
+  }, [isLoggedIn]);
 
   const loginMagic = useCallback(
     async ({
