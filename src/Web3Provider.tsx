@@ -120,10 +120,7 @@ function Web3Provider({
     isLoggedIn
   } = useMagic();
 
-  const isLoggedMagic = useMemo(() => {
-    console.log("isLoggedIn", isLoggedIn )
-    return Boolean(isLoggedIn)
-  }, [isLoggedIn]);
+  const isLoggedMagic = Boolean(isLoggedIn)
 
   const loginMagic = useCallback(
     async ({
@@ -484,7 +481,6 @@ function Web3Provider({
       getEthBalance,
       estimateTransfer,
       transferETH,
-      isLoggedMagic
     ]
   );
 
