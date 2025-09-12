@@ -52,7 +52,23 @@ type LoginMagicType = {
     onIdTokenCreated?: (idToken: string) => void;
     onLocked?: () => void;
 };
-interface Web3ContextType {
+type CancelVerifyResult = {
+    status: "success";
+} | {
+    status: "no_flow";
+    reason: "not_initialized";
+} | {
+    status: "error";
+    error: unknown;
+};
+
+declare const MagicProvider: React.FC<{
+    children: ReactNode;
+    MarketPlaceInfo: MarketPlaceInfo;
+    NFTInfo: NFTInfo;
+}>;
+
+declare const useWeb3: () => {
     ethersProvider: ethers.BrowserProvider | null;
     ethersSigner: ethers.JsonRpcSigner | null;
     marketContract: ethers.Contract | null;
@@ -63,29 +79,34 @@ interface Web3ContextType {
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;
     magic: Magic | null;
-    cancelVerify: () => Promise<CancelVerifyResult | void>;
+    cancelVerify?: () => Promise<CancelVerifyResult>;
     checkLoggedInMagic: () => Promise<boolean>;
     getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
-}
-type CancelVerifyResult = {
-    status: "success";
-} | {
-    status: "no_flow";
-    reason: "not_initialized";
-} | {
-    status: "error";
-    error: unknown;
+    listNFT: (props: {
+        tokenSell?: string;
+        tokenId: string | bigint | number;
+        amount: string | bigint | number;
+        price: string;
+        privateBuyer?: string[];
+    }, overrides?: {
+        gasLimit?: bigint;
+        gasPrice?: bigint;
+        value?: bigint;
+    }) => Promise<any>;
+    history: () => Promise<any>;
+    getNFTInfo: (tokenId: bigint | number) => Promise<any>;
+    getEthBalance: () => Promise<{
+        address: string;
+        balanceEth: string;
+    }>;
+    estimateTransfer: (to: string, amountEth: string) => Promise<{
+        gasLimit: bigint;
+        gasPrice: bigint;
+        value: bigint;
+    }>;
+    transferETH: (to: string, amountEth: string) => Promise<ethers.TransactionReceipt | null>;
 };
-type MagicProviderProps = {
-    children: ReactNode;
-    MarketPlaceInfo: MarketPlaceInfo;
-    NFTInfo: NFTInfo;
-};
-
-declare const MagicProvider: React.FC<MagicProviderProps>;
-
-declare const useWeb3: () => Web3ContextType;
 
 declare function useIsLoggedIn(pollInterval?: number): boolean | null;
 

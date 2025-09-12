@@ -8,11 +8,55 @@ import React, {
   useState,
 } from "react";
 import Cookies from "js-cookie";
-import { MAGIC_AUTH } from "./constants/common";
-import { LoginMagicType, MarketPlaceInfo, NFTInfo, Web3ContextType } from "./types";
+import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
+import {
+  CancelVerifyResult,
+  EthUnit,
+  LoginMagicType,
+  Magic,
+  MarketPlaceInfo,
+  NFTInfo,
+  Web3ContextType,
+} from "./types";
 
-export const Web3Context = React.createContext<Web3ContextType>({
-  magic: null,
+const Web3Context = React.createContext<{
+  ethersProvider: ethers.BrowserProvider | null;
+  ethersSigner: ethers.JsonRpcSigner | null;
+  marketContract: ethers.Contract | null;
+  nftContract: ethers.Contract | null;
+  loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
+  verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
+  isSendingOTP: boolean;
+  isVerifyingOTP: boolean;
+  disconnectWallet: () => Promise<void>;
+  magic: Magic | null;
+  cancelVerify?: () => Promise<CancelVerifyResult>;
+  checkLoggedInMagic: () => Promise<boolean>;
+  getUserIdToken: () => Promise<string | null>;
+  convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
+  listNFT: (
+    props: {
+      tokenSell?: string;
+      tokenId: string | bigint | number;
+      amount: string | bigint | number;
+      price: string;
+      privateBuyer?: string[];
+    },
+    overrides?: {
+      gasLimit?: bigint;
+      gasPrice?: bigint;
+      value?: bigint;
+    }
+  ) => Promise<any>;
+  history: () => Promise<any>;
+  getNFTInfo: (tokenId: bigint | number) => Promise<any>;
+  getEthBalance: () => Promise<{ address: string; balanceEth: string }>;
+  estimateTransfer: (
+    to: string,
+    amountEth: string
+  ) => Promise<{ gasLimit: bigint; gasPrice: bigint; value: bigint }>;
+  transferETH: (to: string, amountEth: string) => Promise<ethers.TransactionReceipt | null>;
+}>({
   ethersProvider: null,
   ethersSigner: null,
   marketContract: null,
@@ -22,11 +66,21 @@ export const Web3Context = React.createContext<Web3ContextType>({
   isSendingOTP: false,
   isVerifyingOTP: false,
   disconnectWallet: async () => {},
+  magic: null,
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
-  convertBalance: () => "",
   getUserIdToken: async () => null,
+  convertBalance: () => "",
+  listNFT: () => Promise.resolve(),
+  history: () => Promise.resolve(),
+  getNFTInfo: () => Promise.resolve(),
+  getEthBalance: async () => ({ address: "", balanceEth: "0" }),
+  estimateTransfer: async () => ({ gasLimit: 0n, gasPrice: 0n, value: 0n }),
+  transferETH: async () => {
+    throw new Error("Web3Context not initialized: transferETH is unavailable outside Provider");
+  },
 });
+
 
 export const useWeb3 = () => useContext(Web3Context);
 
@@ -41,8 +95,12 @@ function Web3Provider({
 }) {
   const [ethersProvider, setEtherProvider] =
     useState<ethers.BrowserProvider | null>(null);
-  const [ethersSigner, setEtherSigner] = useState<ethers.JsonRpcSigner | null>(null);
-  const [marketContract, setMarketContract] = useState<ethers.Contract | null>(null);
+  const [ethersSigner, setEtherSigner] = useState<ethers.JsonRpcSigner | null>(
+    null
+  );
+  const [marketContract, setMarketContract] = useState<ethers.Contract | null>(
+    null
+  );
   const [nftContract, setNftContract] = useState<ethers.Contract | null>(null);
 
   const [isSendingOTP, setIsSendingOTP] = useState(false);
@@ -50,17 +108,17 @@ function Web3Provider({
 
   const {
     magic,
-    isLoggedIn,
     loginEmailOTP,
     checkLoggedInMagic,
     logout: logoutMagic,
     verifyOTP,
     cancelVerify,
+    getUserIdToken,
     convertBalance,
-    getUserIdToken
+    isLoggedIn
   } = useMagic();
 
-  const isLoggedMagic = Boolean(isLoggedIn)
+    const isLoggedMagic = Boolean(isLoggedIn)
 
   const loginMagic = useCallback(
     async ({
@@ -82,30 +140,30 @@ function Web3Provider({
           events: {
             "email-otp-sent": () => {
               setIsSendingOTP(false);
-              onOTPSent?.()
+              onOTPSent?.();
             },
             "invalid-email-otp": () => {
               setIsVerifyingOTP(false);
-              onVerifyOTPFail?.()
+              onVerifyOTPFail?.();
             },
             "expired-email-otp": () => {
               setIsVerifyingOTP(false);
-              onExpiredEmailOTP?.()
+              onExpiredEmailOTP?.();
             },
             "login-throttled": () => {
-              onLoginThrottled?.()
+              onLoginThrottled?.();
               setIsSendingOTP(false);
               setIsVerifyingOTP(false);
             },
             done: (result) => {
               setIsSendingOTP(false);
               setIsVerifyingOTP(false);
-              onDone?.(result)
+              onDone?.(result);
             },
             error: (reason) => {
               setIsSendingOTP(false);
               setIsVerifyingOTP(false);
-              onError?.(reason)
+              onError?.(reason);
             },
             "Auth/id-token-created": (idToken) => onIdTokenCreated?.(idToken),
           },
@@ -113,10 +171,9 @@ function Web3Provider({
         if (!didToken) {
           return;
         }
-        Cookies.set(MAGIC_AUTH, JSON.stringify({ token: didToken }));
         onSuccess?.();
       } catch (err: any) {
-        console.log(err)
+        console.log(err);
         onFail?.();
         setIsSendingOTP(false);
       }
@@ -128,24 +185,230 @@ function Web3Provider({
     async (otp: string) => {
       if (otp.length !== 6) return;
       setIsVerifyingOTP(true);
-      try {
-        const result = await verifyOTP?.(otp);
-        return result;
-      } finally {
-        setIsVerifyingOTP(false);
-      }
-    },
-    [verifyOTP]
+      const result = await verifyOTP?.(otp);
+      return result;
+    }, [verifyOTP]
   );
 
   const disconnectWallet = useCallback(async () => {
     if (magic) {
       await logoutMagic();
-      Cookies.remove(MAGIC_AUTH);
     }
   }, [magic, logoutMagic]);
-  
-// =======================================
+
+  const listNFT = useCallback(
+    async (
+      {
+        tokenSell = "0x0000000000000000000000000000000000000000",
+        tokenId,
+        amount,
+        price,
+        privateBuyer = [],
+      }: {
+        tokenSell?: string;
+        tokenId: string | bigint | number;
+        amount: string | bigint | number;
+        price: string;
+        privateBuyer?: string[];
+      },
+      overrides?: {
+        gasLimit?: bigint;
+        gasPrice?: bigint;
+        value?: bigint;
+      }
+    ) => {
+      if (!marketContract || !nftContract) return;
+
+      try {
+        const priceInWei = ethers.parseEther(price);
+        console.log({
+          params: {
+            contractAddress: NFTInfo.address,
+            tokenSell,
+            tokenId,
+            amount,
+            priceInWei: priceInWei.toString(),
+            privateBuyer,
+          },
+          overrides,
+        });
+
+        const tx = await marketContract.listToken(
+          NFTInfo.address,
+          tokenSell,
+          tokenId,
+          amount,
+          priceInWei,
+          privateBuyer,
+          overrides
+        );
+
+        console.log("⏳ Transaction sent:", tx.hash);
+        const receipt = await tx.wait();
+        console.log("✅ NFT listed successfully!", receipt);
+        return receipt;
+      } catch (error) {
+        console.error("❌ Error listing NFT:", error);
+        throw error;
+      }
+    },
+    [marketContract, NFTInfo, nftContract]
+  );
+
+  // ---------- ETH helpers ----------
+  const getEthBalance = useCallback(async () => {
+    if (!ethersSigner) throw new Error("No signer available. Please login first.");
+    const address = await ethersSigner.getAddress();
+    const balWei = await ethersSigner.provider!.getBalance(address);
+    return { address, balanceEth: ethers.formatEther(balWei) };
+  }, [ethersSigner]);
+
+  const estimateTransfer = useCallback(
+    async (to: string, amountEth: string) => {
+      if (!ethersSigner) throw new Error("No signer available. Please login first.");
+      if (!ethers.isAddress(to)) throw new Error("Invalid recipient address");
+      const n = Number(amountEth);
+      if (!Number.isFinite(n) || n <= 0) throw new Error("Invalid amount");
+
+      const provider = ethersSigner.provider!;
+      const value = ethers.parseEther(amountEth);
+
+      try {
+        const gasLimit = await provider.estimateGas({ to, value }).catch(() => 21_000n);
+        const fee = await provider.getFeeData();
+      const gasPrice = fee.gasPrice ?? BigInt(await provider.send("eth_gasPrice", []));
+
+      return { gasLimit, gasPrice, value };
+      } catch (error) {
+        console.error("❌ Error estimating transfer:", error);
+        throw new Error("Failed to estimate gas for the transaction");
+      }
+
+      
+    },
+    [ethersSigner]
+  );
+
+  const transferETH = useCallback(
+  async (to: string, amountEth: string) => {
+    if (!ethersSigner) {
+      throw new Error("Please login first to transfer ETH");
+    }
+
+    const provider = ethersSigner.provider!;
+    const from = await ethersSigner.getAddress();
+
+    const { gasLimit, gasPrice, value } = await estimateTransfer(to, amountEth);
+
+    const txRequest = { to, value, gasLimit, gasPrice } as const;
+
+    console.log("✨ Magic Transfer initiated!", {
+      from,
+      to,
+      amountEth,
+      gasLimit: gasLimit.toString(),
+      gasPrice: gasPrice.toString(),
+    });
+
+    const tx = await ethersSigner.sendTransaction(txRequest);
+    console.log("🚀 Transaction sent! Hash:", tx.hash);
+    console.log("⏳ Waiting for confirmation...");
+
+    const receipt = await tx.wait();
+
+    if (!receipt || receipt.status !== 1) {
+      console.warn("⚠️ Transaction mined nhưng không thành công (status !== 1):", receipt);
+    } else {
+      const egp = (receipt as any)?.effectiveGasPrice as bigint | undefined;
+      const feePaid = egp ? ethers.formatEther((receipt.gasUsed ?? 0n) * egp) : "Unknown";
+      console.log("✅ Transfer successful!", { hash: tx.hash, feePaid });
+    }
+
+    return receipt;
+  },
+  [ethersSigner, estimateTransfer]
+);
+
+
+  const history = useCallback(async () => {
+    if (!nftContract || !marketContract) return;
+    const address = ethersSigner?.address;
+    const filterReceived = nftContract.filters.Transfer(null, address);
+    const receivedEvents = await nftContract.queryFilter(filterReceived);
+
+    const filterSent = nftContract.filters.Transfer(address, null);
+    const sentEvents = await nftContract.queryFilter(filterSent);
+
+    // 2️⃣ Marketplace events
+    const filterListed = marketContract.filters.TokenListed(
+      null,
+      null,
+      address
+    );
+    const listedEvents = await marketContract.queryFilter(filterListed);
+
+    const filterBought = marketContract.filters.TokenSold(null, null, address);
+    const boughtEvents = await marketContract.queryFilter(filterBought);
+
+    const filterDelisted = marketContract.filters.ListingDeleted(null, null);
+    const delistedEvents = await marketContract.queryFilter(filterDelisted);
+
+    return {
+      received: receivedEvents,
+      sent: sentEvents,
+      listed: listedEvents,
+      bought: boughtEvents,
+      delisted: delistedEvents,
+    };
+  }, [nftContract, marketContract]);
+
+  const getNFTInfo = async (tokenId: bigint | number) => {
+    if (!nftContract) return;
+    try {
+      const owner = await nftContract.ownerOf(tokenId);
+
+      const tokenURI: string = await nftContract.tokenURI(tokenId);
+
+      const name: string = await nftContract.name();
+      const symbol: string = await nftContract.symbol();
+
+      let metadata = null;
+      if (tokenURI.startsWith("http") || tokenURI.startsWith("ipfs://")) {
+        let url = tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/");
+        const response = await fetch(url);
+        metadata = await response.json();
+      }
+
+      return {
+        tokenId,
+        owner,
+        collectionName: name,
+        collectionSymbol: symbol,
+        tokenURI,
+        metadata,
+      };
+    } catch (error) {
+      console.error("Error fetching NFT info:", error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    if (nftContract && magic) {
+      const checkApprovedContract = async () => {
+        const isApproved = await nftContract.isApprovedForAll(
+          ethersSigner?.address,
+          MarketPlaceInfo.address
+        );
+        if (isApproved) return;
+        nftContract.setApprovalForAll(MarketPlaceInfo.address, true);
+        return;
+      };
+
+      checkApprovedContract();
+    }
+  }, []);
+
   useEffect(() => {
     if (magic && isLoggedMagic) {
       const checkEthers = async () => {
@@ -171,54 +434,9 @@ function Web3Provider({
     }
   }, [magic, isLoggedMagic]);
 
-  useEffect(() => {
-    if (!magic || !isLoggedMagic) {
-      setEtherProvider(null);
-      setEtherSigner(null);
-      setMarketContract(null);
-      setNftContract(null);
-      return;
-    }
-
-    let mounted = true;
-
-    const initEthers = async () => {
-      const provider = new ethers.BrowserProvider(magic.rpcProvider as any);
-      const signer = await provider.getSigner();
-      const market = new ethers.Contract(
-        MarketPlaceInfo.address,
-        MarketPlaceInfo.abi,
-        signer
-      );
-      const nft = new ethers.Contract(
-        NFTInfo.address,
-        NFTInfo.abi,
-        signer
-      );
-
-      if (!mounted) return;
-      setEtherProvider(provider);
-      setEtherSigner(signer);
-      setMarketContract(market);
-      setNftContract(nft);
-    };
-
-    void initEthers();
-    return () => {
-      mounted = false;
-    };
-  }, [magic, isLoggedMagic, MarketPlaceInfo, NFTInfo]);
-
-// ==============================================
-useEffect(() => {
-    if (!magic) return;
-    void checkLoggedInMagic();
-  }, [magic, checkLoggedInMagic]);
-
   const values = useMemo(
     () => ({
       magic,
-      verifyOTP,
       ethersProvider,
       ethersSigner,
       marketContract,
@@ -229,28 +447,38 @@ useEffect(() => {
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
-      cancelVerify: cancelVerify ?? (() => Promise.resolve()),
+      cancelVerify: cancelVerify,
       checkLoggedInMagic,
+      getUserIdToken,
       convertBalance,
-      getUserIdToken
+      listNFT,
+      history,
+      getNFTInfo,
+      getEthBalance,
+      estimateTransfer,
+      transferETH,
     }),
     [
       magic,
-      verifyOTP,
       ethersProvider,
       ethersSigner,
       marketContract,
       nftContract,
       loginMagic,
-      isLoggedMagic,
       disconnectWallet,
       verifyOTPMagic,
       isSendingOTP,
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
+      getUserIdToken,
       convertBalance,
-      getUserIdToken
+      listNFT,
+      history,
+      getNFTInfo,
+      getEthBalance,
+      estimateTransfer,
+      transferETH,
     ]
   );
 

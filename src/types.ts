@@ -2,7 +2,6 @@
 import type { OAuthExtension } from "@magic-ext/oauth";
 import { BigNumberish, ethers } from "ethers";
 import type { Magic as MagicBase } from "magic-sdk";
-import { ReactNode } from "react";
 
 export type Magic = MagicBase<OAuthExtension[]>;
 
@@ -26,6 +25,18 @@ export type LoginEmailOTPType = {
   email: string;
   events: EssentialLoginEvents;
 };
+
+export interface GasOverrides1559 {
+  gasLimit?: bigint;
+  maxFeePerGas?: bigint;
+  maxPriorityFeePerGas?: bigint;
+}
+
+export interface BalanceInfo {
+  address: string;
+  balanceEth: string;
+}
+
 
 export type MagicContextValue = {
   magic: Magic | null;
@@ -71,6 +82,12 @@ export type LoginMagicType = {
   onLocked?: () => void;
 };
 
+// Thêm (nếu chưa có)
+export type GasOverridesLegacy = {
+  gasLimit?: bigint;
+  gasPrice?: bigint;
+};
+
 export interface Web3ContextType {
   ethersProvider: ethers.BrowserProvider | null;
   ethersSigner: ethers.JsonRpcSigner | null;
@@ -78,26 +95,35 @@ export interface Web3ContextType {
   nftContract: ethers.Contract | null;
   loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
   verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
-  // isLoggedMagic: boolean;
+  isLoggedMagic: boolean;
   isSendingOTP: boolean;
   isVerifyingOTP: boolean;
   disconnectWallet: () => Promise<void>;
   magic: Magic | null;
   cancelVerify: () => Promise<CancelVerifyResult | void>;
   checkLoggedInMagic: () => Promise<boolean>;
-  // resetOTPCount: () => void;
+  resetOTPCount: () => void;
   getUserIdToken: () => Promise<string | null>;
   convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
+  getEthBalance: () => Promise<BalanceInfo>;
+  estimateTransfer: (
+    to: string,
+    amountEth: string
+  ) => Promise<{
+    gasLimit: bigint;
+    gasPrice: bigint; 
+    value: bigint;
+  }>;
+  transferETH: (
+    to: string,
+    amountEth: string,
+    overrides?: GasOverridesLegacy  
+  ) => Promise<ethers.TransactionReceipt | null>;
 }
+
+
 
 export type CancelVerifyResult =
   | { status: "success" }
   | { status: "no_flow"; reason: "not_initialized" }
   | { status: "error"; error: unknown };
-  
-
-export type MagicProviderProps = {
-  children: ReactNode;
-  MarketPlaceInfo: MarketPlaceInfo;
-  NFTInfo: NFTInfo;
-};

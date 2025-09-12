@@ -1,22 +1,23 @@
 // src/provider.tsx
 import React, {
+  ReactNode,
   createContext,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  useCallback,
 } from "react";
 import { initMagic } from "./magicClient";
 import {
   CancelVerifyResult,
-  MagicProviderProps,
   UNIT_DECIMALS,
   type EthUnit,
   type LoginEmailOTPType,
   type Magic,
   type MagicContextValue,
+  type MarketPlaceInfo,
+  type NFTInfo,
 } from "./types";
 import Web3Provider from "./Web3Provider";
 import { parseUnits, formatUnits, BigNumberish } from "ethers";
@@ -29,11 +30,11 @@ export const useMagic = (): MagicContextValue => {
   return ctx;
 };
 
-export const MagicProvider: React.FC<MagicProviderProps> = ({
-  children,
-  MarketPlaceInfo,
-  NFTInfo,
-}) => {
+export const MagicProvider: React.FC<{
+  children: ReactNode;
+  MarketPlaceInfo: MarketPlaceInfo;
+  NFTInfo: NFTInfo;
+}> = ({ children, MarketPlaceInfo, NFTInfo }) => {
   const [magic, setMagic] = useState<Magic | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const flowRef = useRef<any>();
@@ -50,75 +51,67 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
     }
   }, []);
 
-  const checkLoggedInMagic = useCallback(async () => {
-    if (!magic) {
-      setIsLoggedIn(false);
-      return false;
+  useEffect(() => {
+    if (magic) {
+      checkLoggedInMagic();
     }
+  }, [magic]);
+
+  const checkLoggedInMagic = async () => {
     try {
-      const logged = await magic.user.isLoggedIn();
+      const logged = await magic?.user.isLoggedIn();
       setIsLoggedIn(Boolean(logged));
       return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
-      return false;
     }
-  }, [magic]);
+    setIsLoggedIn(false);
+    return false;
+  };
 
-  useEffect(() => {
-    if (magic) void checkLoggedInMagic();
-  }, [magic, checkLoggedInMagic]);
+  const loginEmailOTP = async ({
+    email,
+    events = {},
+  }: LoginEmailOTPType) => {
+    if (!magic) throw new Error("Magic not initialized");
 
-  const loginEmailOTP = useCallback(
-    async ({ email, events = {} }: LoginEmailOTPType) => {
-      if (!magic) throw new Error("Magic not initialized");
+    try {
+      const flow = magic.auth.loginWithEmailOTP({
+        email,
+        deviceCheckUI: false,
+        showUI: false,
+      });
+      flowRef.current = flow;
+      Object.entries(events).forEach(([event, handler]) => {
+        if (handler) flow.on(event as any, handler as any);
+      });
 
-      try {
-        const flow = magic.auth.loginWithEmailOTP({
-          email,
-          deviceCheckUI: false,
-          showUI: false,
-        });
-        flowRef.current = flow;
+      const token = await flow;
 
-        Object.entries(events).forEach(([event, handler]) => {
-          if (handler) flow.on(event as any, handler as any);
-        });
-
-        const token = await flow;
-
-        if (token) {
-          setIsLoggedIn(true);
-        }
-
-        return token || null;
-      } catch (err) {
-        console.error("login error", err);
-        events.error?.(err);
-        return null;
-      } finally {
-        flowRef.current = undefined;
+      if (token) {
+        setIsLoggedIn(true);
       }
-    },
-    [magic]
-  );
 
-  const verifyOTP = useCallback(async (OTP: string): Promise<void> => {
-    if (!OTP) {
-      const err: any = new Error("EMPTY_OTP");
-      err.code = "EMPTY_OTP";
-      throw err;
+      return token || null;
+    } catch (err) {
+      console.error("login error", err);
+      events.error?.(err);
+      return null;
+    } finally {
+      flowRef.current = undefined;
     }
-    if (!flowRef?.current) {
-      const err: any = new Error("NO_FLOW");
-      err.code = "NO_FLOW";
-      throw err;
-    }
-    await flowRef.current.emit("verify-email-otp", OTP);
-  }, []);
+  };
 
-  const cancelVerify = useCallback(async (): Promise<CancelVerifyResult> => {
+  const verifyOTP = async (OTP: string) => {
+    if (flowRef?.current && OTP) {
+      const res = await flowRef?.current?.emit("verify-email-otp", OTP);
+      return res;
+    }
+    console.error("verifyOTP error: must send OTP first");
+  };
+
+  const cancelVerify = async (): Promise<CancelVerifyResult> => {
     if (!flowRef?.current) {
       return { status: "no_flow", reason: "not_initialized" };
     }
@@ -128,9 +121,10 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
     } catch (err) {
       return { status: "error", error: err };
     }
-  }, []);
+  };
 
-  const logout = useCallback(async () => {
+
+  const logout = async () => {
     if (!magic) return;
     try {
       await magic.user.logout();
@@ -138,24 +132,25 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
     } catch (err) {
       console.error("logout error", err);
     }
-  }, [magic]);
+  };
 
-  const convertBalance = useCallback(
-    (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit): string => {
-      const fromDecimals =
-        typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
-      const toDecimals =
-        typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
+  const convertBalance = (
+    value: BigNumberish,
+    fromUnit: EthUnit,
+    toUnit: EthUnit
+  ): string => {
+    const fromDecimals =
+      typeof fromUnit === "number" ? fromUnit : UNIT_DECIMALS[fromUnit];
+    const toDecimals =
+      typeof toUnit === "number" ? toUnit : UNIT_DECIMALS[toUnit];
 
-      if (fromDecimals == null || toDecimals == null) {
-        throw new Error("Wrong Unit");
-      }
+    if (fromDecimals == null || toDecimals == null) {
+      throw new Error("Wrong Unit");
+    }
 
-      const inWei = parseUnits(value.toString(), fromDecimals);
-      return formatUnits(inWei, toDecimals);
-    },
-    []
-  );
+    const inWei = parseUnits(value.toString(), fromDecimals);
+    return formatUnits(inWei, toDecimals);
+  };
 
   // const getUserMetadata = async () => {
   //   if (!magic) return null;
@@ -188,19 +183,10 @@ export const MagicProvider: React.FC<MagicProviderProps> = ({
       cancelVerify,
       logout,
       convertBalance,
-      getUserIdToken
+      // getUserMetadata,
+      getUserIdToken,
     }),
-    [
-      magic,
-      isLoggedIn,
-      checkLoggedInMagic,
-      loginEmailOTP,
-      verifyOTP,
-      cancelVerify,
-      logout,
-      convertBalance,
-      getUserIdToken
-    ]
+    [magic]
   );
 
   return (
