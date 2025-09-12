@@ -26,6 +26,7 @@ const Web3Context = React.createContext<{
   nftContract: ethers.Contract | null;
   loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
   verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
+  isLoggedMagic: boolean; 
   isSendingOTP: boolean;
   isVerifyingOTP: boolean;
   disconnectWallet: () => Promise<void>;
@@ -61,6 +62,7 @@ const Web3Context = React.createContext<{
   ethersSigner: null,
   marketContract: null,
   nftContract: null,
+  isLoggedMagic: false,
   loginMagic: null,
   verifyOTPMagic: null,
   isSendingOTP: false,
@@ -118,7 +120,7 @@ function Web3Provider({
     isLoggedIn
   } = useMagic();
 
-    const isLoggedMagic = Boolean(isLoggedIn)
+  const isLoggedMagic = Boolean(isLoggedIn)
 
   const loginMagic = useCallback(
     async ({

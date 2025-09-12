@@ -75,6 +75,7 @@ declare const useWeb3: () => {
     nftContract: ethers.Contract | null;
     loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
     verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
+    isLoggedMagic: boolean;
     isSendingOTP: boolean;
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;

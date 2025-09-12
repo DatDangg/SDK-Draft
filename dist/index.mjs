@@ -114,6 +114,7 @@ var Web3Context = React.createContext({
   ethersSigner: null,
   marketContract: null,
   nftContract: null,
+  isLoggedMagic: false,
   loginMagic: null,
   verifyOTPMagic: null,
   isSendingOTP: false,
