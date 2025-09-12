@@ -644,7 +644,18 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       // getUserMetadata,
       getUserIdToken
     }),
-    [magic]
+    [
+      magic,
+      isLoggedIn,
+      checkLoggedInMagic,
+      loginEmailOTP,
+      verifyOTP,
+      cancelVerify,
+      logout,
+      convertBalance,
+      // getUserMetadata,
+      getUserIdToken
+    ]
   );
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(MagicContext.Provider, { value, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Web3Provider_default, { MarketPlaceInfo, NFTInfo, children }) });
 };
