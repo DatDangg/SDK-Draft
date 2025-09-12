@@ -187,19 +187,10 @@ export const MagicProvider: React.FC<{
       cancelVerify,
       logout,
       convertBalance,
-      // getUserMetadata,
       getUserIdToken,
     }),
     [magic,
-      isLoggedIn,
-      checkLoggedInMagic,
-      loginEmailOTP,
-      verifyOTP,
-      cancelVerify,
-      logout,
-      convertBalance,
-      // getUserMetadata,
-      getUserIdToken,
+      isLoggedIn
     ]
   );
 

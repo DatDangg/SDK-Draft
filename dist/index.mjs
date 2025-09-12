@@ -163,7 +163,9 @@ function Web3Provider({
     convertBalance,
     isLoggedIn
   } = useMagic();
-  const isLoggedMagic = Boolean(isLoggedIn);
+  const isLoggedMagic = useMemo(() => {
+    return Boolean(isLoggedIn);
+  }, [isLoggedIn]);
   const loginMagic = useCallback(
     async ({
       email,
@@ -615,20 +617,11 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       cancelVerify,
       logout,
       convertBalance,
-      // getUserMetadata,
       getUserIdToken
     }),
     [
       magic,
-      isLoggedIn,
-      checkLoggedInMagic,
-      loginEmailOTP,
-      verifyOTP,
-      cancelVerify,
-      logout,
-      convertBalance,
-      // getUserMetadata,
-      getUserIdToken
+      isLoggedIn
     ]
   );
   return /* @__PURE__ */ jsx2(MagicContext.Provider, { value, children: /* @__PURE__ */ jsx2(Web3Provider_default, { MarketPlaceInfo, NFTInfo, children }) });
