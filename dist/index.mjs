@@ -1,6 +1,7 @@
 // src/provider.tsx
 import {
   createContext,
+  useCallback as useCallback2,
   useContext as useContext2,
   useEffect as useEffect2,
   useMemo as useMemo2,
@@ -512,18 +513,21 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       checkLoggedInMagic();
     }
   }, [magic]);
-  const checkLoggedInMagic = async () => {
+  const checkLoggedInMagic = useCallback2(async () => {
+    if (!magic) {
+      setIsLoggedIn(false);
+      return false;
+    }
     try {
-      const logged = await magic?.user.isLoggedIn();
+      const logged = await magic.user.isLoggedIn();
       setIsLoggedIn(Boolean(logged));
       return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
+      return false;
     }
-    setIsLoggedIn(false);
-    return false;
-  };
+  }, [magic]);
   const loginEmailOTP = async ({
     email,
     events = {}

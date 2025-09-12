@@ -539,18 +539,21 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       checkLoggedInMagic();
     }
   }, [magic]);
-  const checkLoggedInMagic = async () => {
+  const checkLoggedInMagic = (0, import_react2.useCallback)(async () => {
+    if (!magic) {
+      setIsLoggedIn(false);
+      return false;
+    }
     try {
-      const logged = await magic?.user.isLoggedIn();
+      const logged = await magic.user.isLoggedIn();
       setIsLoggedIn(Boolean(logged));
       return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
+      return false;
     }
-    setIsLoggedIn(false);
-    return false;
-  };
+  }, [magic]);
   const loginEmailOTP = async ({
     email,
     events = {}
