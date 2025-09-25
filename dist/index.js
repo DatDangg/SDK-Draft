@@ -141,7 +141,6 @@ var Web3Context = import_react.default.createContext({
   ethersSigner: null,
   marketContract: null,
   nftContract: null,
-  isLoggedMagic: false,
   loginMagic: null,
   verifyOTPMagic: null,
   isSendingOTP: false,
@@ -154,12 +153,12 @@ var Web3Context = import_react.default.createContext({
   getUserIdToken: async () => null,
   convertBalance: () => "",
   listNFT: () => Promise.resolve(),
-  history: () => Promise.resolve(),
-  getNFTInfo: () => Promise.resolve(),
   getEthBalance: async () => ({ address: "", balanceEth: "0" }),
   estimateTransfer: async () => ({ gasLimit: 0n, gasPrice: 0n, value: 0n }),
   transferETH: async () => {
-    throw new Error("Web3Context not initialized: transferETH is unavailable outside Provider");
+    throw new Error(
+      "Web3Context not initialized: transferETH is unavailable outside Provider"
+    );
   }
 });
 var useWeb3 = () => (0, import_react.useContext)(Web3Context);
@@ -279,17 +278,6 @@ function Web3Provider({
         return;
       try {
         const priceInWei = import_ethers.ethers.parseEther(price);
-        console.log({
-          params: {
-            contractAddress: NFTInfo.address,
-            tokenSell,
-            tokenId,
-            amount,
-            priceInWei: priceInWei.toString(),
-            privateBuyer
-          },
-          overrides
-        });
         const tx = await marketContract.listToken(
           NFTInfo.address,
           tokenSell,
@@ -299,9 +287,7 @@ function Web3Provider({
           privateBuyer,
           overrides
         );
-        console.log("\u23F3 Transaction sent:", tx.hash);
         const receipt = await tx.wait();
-        console.log("\u2705 NFT listed successfully!", receipt);
         return receipt;
       } catch (error) {
         console.error("\u274C Error listing NFT:", error);
@@ -347,83 +333,59 @@ function Web3Provider({
       }
       const provider = ethersSigner.provider;
       const from = await ethersSigner.getAddress();
-      const { gasLimit, gasPrice, value } = await estimateTransfer(to, amountEth);
-      const txRequest = { to, value, gasLimit, gasPrice };
-      console.log("\u2728 Magic Transfer initiated!", {
-        from,
+      const value = import_ethers.ethers.parseEther(amountEth);
+      const feeData = await provider.getFeeData();
+      if (!feeData.maxFeePerGas || !feeData.maxPriorityFeePerGas) {
+        throw new Error("Network does not provide EIP-1559 fee data");
+      }
+      const gasMultiplier = 1.2;
+      const maxFeePerGas = BigInt(
+        Math.floor(Number(feeData.maxFeePerGas) * gasMultiplier)
+      );
+      const maxPriorityFeePerGas = BigInt(
+        Math.floor(Number(feeData.maxPriorityFeePerGas) * gasMultiplier)
+      );
+      let gasLimit = 21000n;
+      try {
+        gasLimit = await provider.estimateGas({ to, value });
+      } catch {
+      }
+      const txRequest = {
         to,
-        amountEth,
-        gasLimit: gasLimit.toString(),
-        gasPrice: gasPrice.toString()
-      });
+        value,
+        type: 2,
+        // EIP-1559
+        gasLimit,
+        maxFeePerGas,
+        maxPriorityFeePerGas
+        // nonce: bỏ đi, ethers tự quản lý
+      };
       const tx = await ethersSigner.sendTransaction(txRequest);
-      console.log("\u{1F680} Transaction sent! Hash:", tx.hash);
-      console.log("\u23F3 Waiting for confirmation...");
-      const receipt = await tx.wait();
+      console.log("Transaction hash:", tx.hash);
+      let receipt;
+      try {
+        receipt = await tx.wait(1, 6e4);
+      } catch (err) {
+        console.warn(
+          "Transaction not mined after 60s. You may retry manually.",
+          err
+        );
+        return tx;
+      }
       if (!receipt || receipt.status !== 1) {
-        console.warn("\u26A0\uFE0F Transaction mined nh\u01B0ng kh\xF4ng th\xE0nh c\xF4ng (status !== 1):", receipt);
+        console.warn(
+          "\u26A0\uFE0F Transaction mined nh\u01B0ng kh\xF4ng th\xE0nh c\xF4ng (status !== 1):",
+          receipt
+        );
       } else {
         const egp = receipt?.effectiveGasPrice;
         const feePaid = egp ? import_ethers.ethers.formatEther((receipt.gasUsed ?? 0n) * egp) : "Unknown";
-        console.log("\u2705 Transfer successful!", { hash: tx.hash, feePaid });
+        console.log("Fee paid (ETH):", feePaid);
       }
       return receipt;
     },
-    [ethersSigner, estimateTransfer]
+    [ethersSigner]
   );
-  const history = (0, import_react.useCallback)(async () => {
-    if (!nftContract || !marketContract)
-      return;
-    const address = ethersSigner?.address;
-    const filterReceived = nftContract.filters.Transfer(null, address);
-    const receivedEvents = await nftContract.queryFilter(filterReceived);
-    const filterSent = nftContract.filters.Transfer(address, null);
-    const sentEvents = await nftContract.queryFilter(filterSent);
-    const filterListed = marketContract.filters.TokenListed(
-      null,
-      null,
-      address
-    );
-    const listedEvents = await marketContract.queryFilter(filterListed);
-    const filterBought = marketContract.filters.TokenSold(null, null, address);
-    const boughtEvents = await marketContract.queryFilter(filterBought);
-    const filterDelisted = marketContract.filters.ListingDeleted(null, null);
-    const delistedEvents = await marketContract.queryFilter(filterDelisted);
-    return {
-      received: receivedEvents,
-      sent: sentEvents,
-      listed: listedEvents,
-      bought: boughtEvents,
-      delisted: delistedEvents
-    };
-  }, [nftContract, marketContract]);
-  const getNFTInfo = async (tokenId) => {
-    if (!nftContract)
-      return;
-    try {
-      const owner = await nftContract.ownerOf(tokenId);
-      const tokenURI = await nftContract.tokenURI(tokenId);
-      const name = await nftContract.name();
-      const symbol = await nftContract.symbol();
-      let metadata = null;
-      if (tokenURI.startsWith("http") || tokenURI.startsWith("ipfs://")) {
-        let url = tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/");
-        const response = await fetch(url);
-        metadata = await response.json();
-      }
-      return {
-        tokenId,
-        owner,
-        collectionName: name,
-        collectionSymbol: symbol,
-        tokenURI,
-        metadata
-      };
-    } catch (error) {
-      console.error("Error fetching NFT info:", error);
-      return null;
-    }
-  };
   (0, import_react.useEffect)(() => {
     if (nftContract && magic) {
       const checkApprovedContract = async () => {
@@ -480,8 +442,6 @@ function Web3Provider({
       getUserIdToken,
       convertBalance,
       listNFT,
-      history,
-      getNFTInfo,
       getEthBalance,
       estimateTransfer,
       transferETH
@@ -502,8 +462,6 @@ function Web3Provider({
       getUserIdToken,
       convertBalance,
       listNFT,
-      history,
-      getNFTInfo,
       getEthBalance,
       estimateTransfer,
       transferETH
@@ -541,25 +499,20 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       checkLoggedInMagic();
     }
   }, [magic]);
-  const checkLoggedInMagic = (0, import_react2.useCallback)(async () => {
-    if (!magic) {
-      setIsLoggedIn(false);
-      return false;
-    }
+  const checkLoggedInMagic = async () => {
     try {
-      const logged = await magic.user.isLoggedIn();
+      const logged = await magic?.user.isLoggedIn();
+      console.log({ logged });
       setIsLoggedIn(Boolean(logged));
       return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
-      return false;
     }
-  }, [magic]);
-  const loginEmailOTP = async ({
-    email,
-    events = {}
-  }) => {
+    setIsLoggedIn(false);
+    return false;
+  };
+  const loginEmailOTP = async ({ email, events = {} }) => {
     if (!magic)
       throw new Error("Magic not initialized");
     try {
@@ -643,6 +596,7 @@ var MagicProvider = ({ children, MarketPlaceInfo, NFTInfo }) => {
       cancelVerify,
       logout,
       convertBalance,
+      // getUserMetadata,
       getUserIdToken
     }),
     [

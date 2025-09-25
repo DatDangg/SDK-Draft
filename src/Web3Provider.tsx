@@ -25,8 +25,9 @@ const Web3Context = React.createContext<{
   marketContract: ethers.Contract | null;
   nftContract: ethers.Contract | null;
   loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-  verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
-  isLoggedMagic: boolean; 
+  verifyOTPMagic:
+  | ((otp: string, onLocked?: () => void) => Promise<void>)
+  | null;
   isSendingOTP: boolean;
   isVerifyingOTP: boolean;
   disconnectWallet: () => Promise<void>;
@@ -34,7 +35,11 @@ const Web3Context = React.createContext<{
   cancelVerify?: () => Promise<CancelVerifyResult>;
   checkLoggedInMagic: () => Promise<boolean>;
   getUserIdToken: () => Promise<string | null>;
-  convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
+  convertBalance: (
+    value: BigNumberish,
+    fromUnit: EthUnit,
+    toUnit: EthUnit
+  ) => string;
   listNFT: (
     props: {
       tokenSell?: string;
@@ -49,40 +54,39 @@ const Web3Context = React.createContext<{
       value?: bigint;
     }
   ) => Promise<any>;
-  history: () => Promise<any>;
-  getNFTInfo: (tokenId: bigint | number) => Promise<any>;
   getEthBalance: () => Promise<{ address: string; balanceEth: string }>;
   estimateTransfer: (
     to: string,
     amountEth: string
   ) => Promise<{ gasLimit: bigint; gasPrice: bigint; value: bigint }>;
-  transferETH: (to: string, amountEth: string) => Promise<ethers.TransactionReceipt | null>;
+  transferETH: (
+    to: string,
+    amountEth: string
+  ) => Promise<any>;
 }>({
   ethersProvider: null,
   ethersSigner: null,
   marketContract: null,
   nftContract: null,
-  isLoggedMagic: false,
   loginMagic: null,
   verifyOTPMagic: null,
   isSendingOTP: false,
   isVerifyingOTP: false,
-  disconnectWallet: async () => {},
+  disconnectWallet: async () => { },
   magic: null,
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
   checkLoggedInMagic: async () => false,
   getUserIdToken: async () => null,
   convertBalance: () => "",
   listNFT: () => Promise.resolve(),
-  history: () => Promise.resolve(),
-  getNFTInfo: () => Promise.resolve(),
   getEthBalance: async () => ({ address: "", balanceEth: "0" }),
   estimateTransfer: async () => ({ gasLimit: 0n, gasPrice: 0n, value: 0n }),
   transferETH: async () => {
-    throw new Error("Web3Context not initialized: transferETH is unavailable outside Provider");
+    throw new Error(
+      "Web3Context not initialized: transferETH is unavailable outside Provider"
+    );
   },
 });
-
 
 export const useWeb3 = () => useContext(Web3Context);
 
@@ -117,7 +121,7 @@ function Web3Provider({
     cancelVerify,
     getUserIdToken,
     convertBalance,
-    isLoggedIn
+    isLoggedIn,
   } = useMagic();
 
   const isLoggedMagic = useMemo(() => {
@@ -191,7 +195,8 @@ function Web3Provider({
       setIsVerifyingOTP(true);
       const result = await verifyOTP?.(otp);
       return result;
-    }, [verifyOTP]
+    },
+    [verifyOTP]
   );
 
   const disconnectWallet = useCallback(async () => {
@@ -225,17 +230,6 @@ function Web3Provider({
 
       try {
         const priceInWei = ethers.parseEther(price);
-        console.log({
-          params: {
-            contractAddress: NFTInfo.address,
-            tokenSell,
-            tokenId,
-            amount,
-            priceInWei: priceInWei.toString(),
-            privateBuyer,
-          },
-          overrides,
-        });
 
         const tx = await marketContract.listToken(
           NFTInfo.address,
@@ -247,9 +241,7 @@ function Web3Provider({
           overrides
         );
 
-        console.log("⏳ Transaction sent:", tx.hash);
         const receipt = await tx.wait();
-        console.log("✅ NFT listed successfully!", receipt);
         return receipt;
       } catch (error) {
         console.error("❌ Error listing NFT:", error);
@@ -261,7 +253,8 @@ function Web3Provider({
 
   // ---------- ETH helpers ----------
   const getEthBalance = useCallback(async () => {
-    if (!ethersSigner) throw new Error("No signer available. Please login first.");
+    if (!ethersSigner)
+      throw new Error("No signer available. Please login first.");
     const address = await ethersSigner.getAddress();
     const balWei = await ethersSigner.provider!.getBalance(address);
     return { address, balanceEth: ethers.formatEther(balWei) };
@@ -269,7 +262,8 @@ function Web3Provider({
 
   const estimateTransfer = useCallback(
     async (to: string, amountEth: string) => {
-      if (!ethersSigner) throw new Error("No signer available. Please login first.");
+      if (!ethersSigner)
+        throw new Error("No signer available. Please login first.");
       if (!ethers.isAddress(to)) throw new Error("Invalid recipient address");
       const n = Number(amountEth);
       if (!Number.isFinite(n) || n <= 0) throw new Error("Invalid amount");
@@ -278,124 +272,102 @@ function Web3Provider({
       const value = ethers.parseEther(amountEth);
 
       try {
-        const gasLimit = await provider.estimateGas({ to, value }).catch(() => 21_000n);
+        const gasLimit = await provider
+          .estimateGas({ to, value })
+          .catch(() => 21_000n);
         const fee = await provider.getFeeData();
-      const gasPrice = fee.gasPrice ?? BigInt(await provider.send("eth_gasPrice", []));
+        const gasPrice =
+          fee.gasPrice ?? BigInt(await provider.send("eth_gasPrice", []));
 
-      return { gasLimit, gasPrice, value };
+        return { gasLimit, gasPrice, value };
       } catch (error) {
         console.error("❌ Error estimating transfer:", error);
         throw new Error("Failed to estimate gas for the transaction");
       }
-
-      
     },
     [ethersSigner]
   );
 
   const transferETH = useCallback(
-  async (to: string, amountEth: string) => {
-    if (!ethersSigner) {
-      throw new Error("Please login first to transfer ETH");
-    }
-
-    const provider = ethersSigner.provider!;
-    const from = await ethersSigner.getAddress();
-
-    const { gasLimit, gasPrice, value } = await estimateTransfer(to, amountEth);
-
-    const txRequest = { to, value, gasLimit, gasPrice } as const;
-
-    console.log("✨ Magic Transfer initiated!", {
-      from,
-      to,
-      amountEth,
-      gasLimit: gasLimit.toString(),
-      gasPrice: gasPrice.toString(),
-    });
-
-    const tx = await ethersSigner.sendTransaction(txRequest);
-    console.log("🚀 Transaction sent! Hash:", tx.hash);
-    console.log("⏳ Waiting for confirmation...");
-
-    const receipt = await tx.wait();
-
-    if (!receipt || receipt.status !== 1) {
-      console.warn("⚠️ Transaction mined nhưng không thành công (status !== 1):", receipt);
-    } else {
-      const egp = (receipt as any)?.effectiveGasPrice as bigint | undefined;
-      const feePaid = egp ? ethers.formatEther((receipt.gasUsed ?? 0n) * egp) : "Unknown";
-      console.log("✅ Transfer successful!", { hash: tx.hash, feePaid });
-    }
-
-    return receipt;
-  },
-  [ethersSigner, estimateTransfer]
-);
-
-
-  const history = useCallback(async () => {
-    if (!nftContract || !marketContract) return;
-    const address = ethersSigner?.address;
-    const filterReceived = nftContract.filters.Transfer(null, address);
-    const receivedEvents = await nftContract.queryFilter(filterReceived);
-
-    const filterSent = nftContract.filters.Transfer(address, null);
-    const sentEvents = await nftContract.queryFilter(filterSent);
-
-    // 2️⃣ Marketplace events
-    const filterListed = marketContract.filters.TokenListed(
-      null,
-      null,
-      address
-    );
-    const listedEvents = await marketContract.queryFilter(filterListed);
-
-    const filterBought = marketContract.filters.TokenSold(null, null, address);
-    const boughtEvents = await marketContract.queryFilter(filterBought);
-
-    const filterDelisted = marketContract.filters.ListingDeleted(null, null);
-    const delistedEvents = await marketContract.queryFilter(filterDelisted);
-
-    return {
-      received: receivedEvents,
-      sent: sentEvents,
-      listed: listedEvents,
-      bought: boughtEvents,
-      delisted: delistedEvents,
-    };
-  }, [nftContract, marketContract]);
-
-  const getNFTInfo = async (tokenId: bigint | number) => {
-    if (!nftContract) return;
-    try {
-      const owner = await nftContract.ownerOf(tokenId);
-
-      const tokenURI: string = await nftContract.tokenURI(tokenId);
-
-      const name: string = await nftContract.name();
-      const symbol: string = await nftContract.symbol();
-
-      let metadata = null;
-      if (tokenURI.startsWith("http") || tokenURI.startsWith("ipfs://")) {
-        let url = tokenURI.replace("ipfs://", "https://ipfs.io/ipfs/");
-        const response = await fetch(url);
-        metadata = await response.json();
+    async (to: string, amountEth: string) => {
+      if (!ethersSigner) {
+        throw new Error("Please login first to transfer ETH");
       }
 
-      return {
-        tokenId,
-        owner,
-        collectionName: name,
-        collectionSymbol: symbol,
-        tokenURI,
-        metadata,
+      const provider = ethersSigner.provider!;
+      const from = await ethersSigner.getAddress();
+
+      // 1. Tính value
+      const value = ethers.parseEther(amountEth);
+
+      // 2. Lấy fee data từ network
+      const feeData = await provider.getFeeData();
+      if (!feeData.maxFeePerGas || !feeData.maxPriorityFeePerGas) {
+        throw new Error("Network does not provide EIP-1559 fee data");
+      }
+
+      // 3. Có thể tăng 20% để đảm bảo tx được mined
+      const gasMultiplier = 1.2;
+      const maxFeePerGas = BigInt(
+        Math.floor(Number(feeData.maxFeePerGas) * gasMultiplier)
+      );
+      const maxPriorityFeePerGas = BigInt(
+        Math.floor(Number(feeData.maxPriorityFeePerGas) * gasMultiplier)
+      );
+
+      // 4. Estimate gas nếu muốn
+      let gasLimit = 21000n; // default
+      try {
+        gasLimit = await provider.estimateGas({ to, value });
+      } catch {
+        // fallback 21000 nếu estimate fail
+      }
+
+      // 5. Chuẩn bị tx request
+      const txRequest = {
+        to,
+        value,
+        type: 2, // EIP-1559
+        gasLimit,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+        // nonce: bỏ đi, ethers tự quản lý
       };
-    } catch (error) {
-      console.error("Error fetching NFT info:", error);
-      return null;
-    }
-  };
+
+      // 6. Gửi transaction
+      const tx = await ethersSigner.sendTransaction(txRequest);
+      console.log("Transaction hash:", tx.hash);
+
+      // 7. Chờ mined với timeout 60s
+      let receipt;
+      try {
+        receipt = await tx.wait(1, 60000);
+      } catch (err) {
+        console.warn(
+          "Transaction not mined after 60s. You may retry manually.",
+          err
+        );
+        return tx; // trả về tx object để tham chiếu
+      }
+
+      // 8. Kiểm tra status
+      if (!receipt || receipt.status !== 1) {
+        console.warn(
+          "⚠️ Transaction mined nhưng không thành công (status !== 1):",
+          receipt
+        );
+      } else {
+        const egp = (receipt as any)?.effectiveGasPrice as bigint | undefined;
+        const feePaid = egp
+          ? ethers.formatEther((receipt.gasUsed ?? 0n) * egp)
+          : "Unknown";
+        console.log("Fee paid (ETH):", feePaid);
+      }
+
+      return receipt;
+    },
+    [ethersSigner]
+  );
 
   useEffect(() => {
     if (nftContract && magic) {
@@ -456,8 +428,6 @@ function Web3Provider({
       getUserIdToken,
       convertBalance,
       listNFT,
-      history,
-      getNFTInfo,
       getEthBalance,
       estimateTransfer,
       transferETH,
@@ -478,8 +448,6 @@ function Web3Provider({
       getUserIdToken,
       convertBalance,
       listNFT,
-      history,
-      getNFTInfo,
       getEthBalance,
       estimateTransfer,
       transferETH,

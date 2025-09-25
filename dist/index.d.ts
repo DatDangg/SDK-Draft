@@ -75,7 +75,6 @@ declare const useWeb3: () => {
     nftContract: ethers.Contract | null;
     loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
     verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
-    isLoggedMagic: boolean;
     isSendingOTP: boolean;
     isVerifyingOTP: boolean;
     disconnectWallet: () => Promise<void>;
@@ -95,8 +94,6 @@ declare const useWeb3: () => {
         gasPrice?: bigint;
         value?: bigint;
     }) => Promise<any>;
-    history: () => Promise<any>;
-    getNFTInfo: (tokenId: bigint | number) => Promise<any>;
     getEthBalance: () => Promise<{
         address: string;
         balanceEth: string;
@@ -106,7 +103,7 @@ declare const useWeb3: () => {
         gasPrice: bigint;
         value: bigint;
     }>;
-    transferETH: (to: string, amountEth: string) => Promise<ethers.TransactionReceipt | null>;
+    transferETH: (to: string, amountEth: string) => Promise<any>;
 };
 
 declare function useIsLoggedIn(pollInterval?: number): boolean | null;

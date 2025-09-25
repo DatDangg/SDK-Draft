@@ -2,7 +2,6 @@
 import React, {
   ReactNode,
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -43,7 +42,7 @@ export const MagicProvider: React.FC<{
   // init once
   useEffect(() => {
     try {
-      const m = initMagic('', '');
+      const m = initMagic("", "");
       setMagic(m);
     } catch (err) {
       // don't break apps; consumer may want to handle absence of magic
@@ -58,26 +57,21 @@ export const MagicProvider: React.FC<{
     }
   }, [magic]);
 
-  const checkLoggedInMagic = useCallback(async () => {
-    if (!magic) {
-      setIsLoggedIn(false);
-      return false;
-    }
+  const checkLoggedInMagic = async () => {
     try {
-      const logged = await magic.user.isLoggedIn();
+      const logged = await magic?.user.isLoggedIn();
+      console.log({ logged });
       setIsLoggedIn(Boolean(logged));
       return Boolean(logged);
     } catch (err) {
       console.warn("isLoggedIn check failed", err);
       setIsLoggedIn(false);
-      return false;
     }
-  }, [magic]);
+    setIsLoggedIn(false);
+    return false;
+  };
 
-  const loginEmailOTP = async ({
-    email,
-    events = {},
-  }: LoginEmailOTPType) => {
+  const loginEmailOTP = async ({ email, events = {} }: LoginEmailOTPType) => {
     if (!magic) throw new Error("Magic not initialized");
 
     try {
@@ -127,7 +121,6 @@ export const MagicProvider: React.FC<{
     }
   };
 
-
   const logout = async () => {
     if (!magic) return;
     try {
@@ -171,11 +164,11 @@ export const MagicProvider: React.FC<{
     if (!magic) return null;
     try {
       const idToken = await magic.user.getIdToken();
-      return idToken
+      return idToken;
     } catch (err) {
-      return null
+      return null;
     }
-  }
+  };
 
   const value = useMemo(
     () => ({
@@ -187,10 +180,12 @@ export const MagicProvider: React.FC<{
       cancelVerify,
       logout,
       convertBalance,
+      // getUserMetadata,
       getUserIdToken,
     }),
-    [magic,
-      isLoggedIn
+    [
+      magic,
+      isLoggedIn,
     ]
   );
 
