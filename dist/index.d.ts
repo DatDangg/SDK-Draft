@@ -52,23 +52,7 @@ type LoginMagicType = {
     onIdTokenCreated?: (idToken: string) => void;
     onLocked?: () => void;
 };
-type CancelVerifyResult = {
-    status: "success";
-} | {
-    status: "no_flow";
-    reason: "not_initialized";
-} | {
-    status: "error";
-    error: unknown;
-};
-
-declare const MagicProvider: React.FC<{
-    children: ReactNode;
-    MarketPlaceInfo: MarketPlaceInfo;
-    NFTInfo: NFTInfo;
-}>;
-
-declare const useWeb3: () => {
+interface Web3ContextType {
     ethersProvider: ethers.BrowserProvider | null;
     ethersSigner: ethers.JsonRpcSigner | null;
     marketContract: ethers.Contract | null;
@@ -77,6 +61,7 @@ declare const useWeb3: () => {
     verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
     isSendingOTP: boolean;
     isVerifyingOTP: boolean;
+    isLoggedMagic: boolean;
     disconnectWallet: () => Promise<void>;
     magic: Magic | null;
     cancelVerify?: () => Promise<CancelVerifyResult>;
@@ -103,8 +88,25 @@ declare const useWeb3: () => {
         gasPrice: bigint;
         value: bigint;
     }>;
-    transferETH: (to: string, amountEth: string) => Promise<any>;
+    transferETH: (to: string, amountEth: string) => Promise<ethers.TransactionReceipt | null>;
+}
+type CancelVerifyResult = {
+    status: "success";
+} | {
+    status: "no_flow";
+    reason: "not_initialized";
+} | {
+    status: "error";
+    error: unknown;
 };
+
+declare const MagicProvider: React.FC<{
+    children: ReactNode;
+    MarketPlaceInfo: MarketPlaceInfo;
+    NFTInfo: NFTInfo;
+}>;
+
+declare const useWeb3: () => Web3ContextType;
 
 declare function useIsLoggedIn(pollInterval?: number): boolean | null;
 

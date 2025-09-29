@@ -37,7 +37,6 @@ export interface BalanceInfo {
   balanceEth: string;
 }
 
-
 export type MagicContextValue = {
   magic: Magic | null;
   loginEmailOTP: (props: LoginEmailOTPType) => Promise<string | null>;
@@ -47,8 +46,12 @@ export type MagicContextValue = {
   checkLoggedInMagic: () => Promise<boolean>;
   verifyOTP?: (OTP: string) => Promise<void>;
   cancelVerify?: () => Promise<CancelVerifyResult>;
-  getUserIdToken: () => Promise<string | null>
-  convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
+  getUserIdToken: () => Promise<string | null>;
+  convertBalance: (
+    value: BigNumberish,
+    fromUnit: EthUnit,
+    toUnit: EthUnit
+  ) => string;
 };
 
 export type EssentialLoginEvents = Partial<{
@@ -61,11 +64,29 @@ export type EssentialLoginEvents = Partial<{
   "Auth/id-token-created": (idToken: string) => void;
 }>;
 
-
-export type EthUnit = "wei" | "kwei" | "babbage" | "mwei" | "lovelace" | "gwei" | "shannon" | "szabo" | "finney" | "ether";
+export type EthUnit =
+  | "wei"
+  | "kwei"
+  | "babbage"
+  | "mwei"
+  | "lovelace"
+  | "gwei"
+  | "shannon"
+  | "szabo"
+  | "finney"
+  | "ether";
 
 export const UNIT_DECIMALS: Record<Exclude<EthUnit, number>, number> = {
-  wei: 0, kwei: 3, babbage: 3, mwei: 6, lovelace: 6, gwei: 9, shannon: 9, szabo: 12, finney: 15, ether: 18,
+  wei: 0,
+  kwei: 3,
+  babbage: 3,
+  mwei: 6,
+  lovelace: 6,
+  gwei: 9,
+  shannon: 9,
+  szabo: 12,
+  finney: 15,
+  ether: 18,
 };
 
 export type LoginMagicType = {
@@ -94,34 +115,46 @@ export interface Web3ContextType {
   marketContract: ethers.Contract | null;
   nftContract: ethers.Contract | null;
   loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-  verifyOTPMagic: ((otp: string, onLocked?: () => void) => Promise<void>) | null;
-  isLoggedMagic: boolean;
+  verifyOTPMagic:
+    | ((otp: string, onLocked?: () => void) => Promise<void>)
+    | null;
   isSendingOTP: boolean;
   isVerifyingOTP: boolean;
+  isLoggedMagic: boolean;
   disconnectWallet: () => Promise<void>;
   magic: Magic | null;
-  cancelVerify: () => Promise<CancelVerifyResult | void>;
+  cancelVerify?: () => Promise<CancelVerifyResult>;
   checkLoggedInMagic: () => Promise<boolean>;
-  resetOTPCount: () => void;
   getUserIdToken: () => Promise<string | null>;
-  convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
-  getEthBalance: () => Promise<BalanceInfo>;
+  convertBalance: (
+    value: BigNumberish,
+    fromUnit: EthUnit,
+    toUnit: EthUnit
+  ) => string;
+  listNFT: (
+    props: {
+      tokenSell?: string;
+      tokenId: string | bigint | number;
+      amount: string | bigint | number;
+      price: string;
+      privateBuyer?: string[];
+    },
+    overrides?: {
+      gasLimit?: bigint;
+      gasPrice?: bigint;
+      value?: bigint;
+    }
+  ) => Promise<any>;
+  getEthBalance: () => Promise<{ address: string; balanceEth: string }>;
   estimateTransfer: (
     to: string,
     amountEth: string
-  ) => Promise<{
-    gasLimit: bigint;
-    gasPrice: bigint; 
-    value: bigint;
-  }>;
+  ) => Promise<{ gasLimit: bigint; gasPrice: bigint; value: bigint }>;
   transferETH: (
     to: string,
-    amountEth: string,
-    overrides?: GasOverridesLegacy  
+    amountEth: string
   ) => Promise<ethers.TransactionReceipt | null>;
 }
-
-
 
 export type CancelVerifyResult =
   | { status: "success" }

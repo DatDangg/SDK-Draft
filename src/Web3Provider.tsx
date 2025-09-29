@@ -1,69 +1,20 @@
-import { useMagic } from "./provider";
-import { BigNumberish, ethers } from "ethers";
+import { ethers } from "ethers";
 import React, {
-  useContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import Cookies from "js-cookie";
-import { LOGGED_MAGIC, MAGIC_AUTH } from "./constants/common";
+import { useMagic } from "./provider";
 import {
-  CancelVerifyResult,
-  EthUnit,
   LoginMagicType,
-  Magic,
   MarketPlaceInfo,
   NFTInfo,
   Web3ContextType,
 } from "./types";
 
-const Web3Context = React.createContext<{
-  ethersProvider: ethers.BrowserProvider | null;
-  ethersSigner: ethers.JsonRpcSigner | null;
-  marketContract: ethers.Contract | null;
-  nftContract: ethers.Contract | null;
-  loginMagic: ((props: LoginMagicType) => Promise<void>) | null;
-  verifyOTPMagic:
-  | ((otp: string, onLocked?: () => void) => Promise<void>)
-  | null;
-  isSendingOTP: boolean;
-  isVerifyingOTP: boolean;
-  disconnectWallet: () => Promise<void>;
-  magic: Magic | null;
-  cancelVerify?: () => Promise<CancelVerifyResult>;
-  checkLoggedInMagic: () => Promise<boolean>;
-  getUserIdToken: () => Promise<string | null>;
-  convertBalance: (
-    value: BigNumberish,
-    fromUnit: EthUnit,
-    toUnit: EthUnit
-  ) => string;
-  listNFT: (
-    props: {
-      tokenSell?: string;
-      tokenId: string | bigint | number;
-      amount: string | bigint | number;
-      price: string;
-      privateBuyer?: string[];
-    },
-    overrides?: {
-      gasLimit?: bigint;
-      gasPrice?: bigint;
-      value?: bigint;
-    }
-  ) => Promise<any>;
-  getEthBalance: () => Promise<{ address: string; balanceEth: string }>;
-  estimateTransfer: (
-    to: string,
-    amountEth: string
-  ) => Promise<{ gasLimit: bigint; gasPrice: bigint; value: bigint }>;
-  transferETH: (
-    to: string,
-    amountEth: string
-  ) => Promise<any>;
-}>({
+const Web3Context = React.createContext<Web3ContextType>({
   ethersProvider: null,
   ethersSigner: null,
   marketContract: null,
@@ -72,6 +23,7 @@ const Web3Context = React.createContext<{
   verifyOTPMagic: null,
   isSendingOTP: false,
   isVerifyingOTP: false,
+  isLoggedMagic: false,
   disconnectWallet: async () => { },
   magic: null,
   cancelVerify: async () => ({ status: "no_flow", reason: "not_initialized" }),
@@ -125,7 +77,7 @@ function Web3Provider({
   } = useMagic();
 
   const isLoggedMagic = useMemo(() => {
-    return Boolean(isLoggedIn)
+    return Boolean(isLoggedIn);
   }, [isLoggedIn]);
 
   const loginMagic = useCallback(
@@ -206,26 +158,19 @@ function Web3Provider({
   }, [magic, logoutMagic]);
 
   const listNFT = useCallback(
-    async (
-      {
-        tokenSell = "0x0000000000000000000000000000000000000000",
-        tokenId,
-        amount,
-        price,
-        privateBuyer = [],
-      }: {
-        tokenSell?: string;
-        tokenId: string | bigint | number;
-        amount: string | bigint | number;
-        price: string;
-        privateBuyer?: string[];
-      },
-      overrides?: {
-        gasLimit?: bigint;
-        gasPrice?: bigint;
-        value?: bigint;
-      }
-    ) => {
+    async ({
+      tokenSell = "0x0000000000000000000000000000000000000000",
+      tokenId,
+      amount,
+      price,
+      privateBuyer = [],
+    }: {
+      tokenSell?: string;
+      tokenId: string | bigint | number;
+      amount: string | bigint | number;
+      price: string;
+      privateBuyer?: string[];
+    }) => {
       if (!marketContract || !nftContract) return;
 
       try {
@@ -237,8 +182,7 @@ function Web3Provider({
           tokenId,
           amount,
           priceInWei,
-          privateBuyer,
-          overrides
+          privateBuyer
         );
 
         const receipt = await tx.wait();
@@ -294,79 +238,26 @@ function Web3Provider({
         throw new Error("Please login first to transfer ETH");
       }
 
-      const provider = ethersSigner.provider!;
-      const from = await ethersSigner.getAddress();
-
-      // 1. Tính value
-      const value = ethers.parseEther(amountEth);
-
-      // 2. Lấy fee data từ network
-      const feeData = await provider.getFeeData();
-      if (!feeData.maxFeePerGas || !feeData.maxPriorityFeePerGas) {
-        throw new Error("Network does not provide EIP-1559 fee data");
-      }
-
-      // 3. Có thể tăng 20% để đảm bảo tx được mined
-      const gasMultiplier = 1.2;
-      const maxFeePerGas = BigInt(
-        Math.floor(Number(feeData.maxFeePerGas) * gasMultiplier)
-      );
-      const maxPriorityFeePerGas = BigInt(
-        Math.floor(Number(feeData.maxPriorityFeePerGas) * gasMultiplier)
-      );
-
-      // 4. Estimate gas nếu muốn
-      let gasLimit = 21000n; // default
-      try {
-        gasLimit = await provider.estimateGas({ to, value });
-      } catch {
-        // fallback 21000 nếu estimate fail
-      }
-
-      // 5. Chuẩn bị tx request
-      const txRequest = {
+      const { gasLimit, gasPrice, value } = await estimateTransfer(
         to,
-        value,
-        type: 2, // EIP-1559
-        gasLimit,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
-        // nonce: bỏ đi, ethers tự quản lý
-      };
+        amountEth
+      );
 
-      // 6. Gửi transaction
+      const txRequest = { to, value, gasLimit, gasPrice } as const;
+
       const tx = await ethersSigner.sendTransaction(txRequest);
-      console.log("Transaction hash:", tx.hash);
 
-      // 7. Chờ mined với timeout 60s
-      let receipt;
-      try {
-        receipt = await tx.wait(1, 60000);
-      } catch (err) {
-        console.warn(
-          "Transaction not mined after 60s. You may retry manually.",
-          err
-        );
-        return tx; // trả về tx object để tham chiếu
-      }
+      const receipt = await tx.wait();
 
-      // 8. Kiểm tra status
       if (!receipt || receipt.status !== 1) {
         console.warn(
           "⚠️ Transaction mined nhưng không thành công (status !== 1):",
           receipt
         );
-      } else {
-        const egp = (receipt as any)?.effectiveGasPrice as bigint | undefined;
-        const feePaid = egp
-          ? ethers.formatEther((receipt.gasUsed ?? 0n) * egp)
-          : "Unknown";
-        console.log("Fee paid (ETH):", feePaid);
       }
-
       return receipt;
     },
-    [ethersSigner]
+    [ethersSigner, estimateTransfer]
   );
 
   useEffect(() => {
@@ -430,7 +321,7 @@ function Web3Provider({
       listNFT,
       getEthBalance,
       estimateTransfer,
-      transferETH,
+      transferETH: transferETH as any,
     }),
     [
       magic,
@@ -442,6 +333,7 @@ function Web3Provider({
       disconnectWallet,
       verifyOTPMagic,
       isSendingOTP,
+      isLoggedMagic,
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,

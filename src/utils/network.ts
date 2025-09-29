@@ -52,8 +52,8 @@ export const getNetworkUrl = (network: string, apiKey?: string) => {
     case Network.ZKSYNC_SEPOLIA:
       return "https://zksync-era-sepolia.blockpi.network/v1/rpc/public";
     case Network.SONEIUM:
-      // return `https://soneium-minato.g.alchemy.com/v2/${apiKey}`;
-      return `https://soneium-minato.rpc.scs.startale.com?apikey=vjskEsRElh8JM9U0ZeGgOkzaCH2uGDoT`;
+      return `https://soneium-minato.g.alchemy.com/v2/${apiKey}`;
+      // return `https://soneium-minato.rpc.scs.startale.com?apikey=${apiKey}`;
     default:
       throw new Error("Network not supported");
   }

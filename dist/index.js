@@ -87,7 +87,7 @@ var getNetworkUrl = (network, apiKey) => {
     case "zksync-sepolia" /* ZKSYNC_SEPOLIA */:
       return "https://zksync-era-sepolia.blockpi.network/v1/rpc/public";
     case "soneium" /* SONEIUM */:
-      return `https://soneium-minato.rpc.scs.startale.com?apikey=vjskEsRElh8JM9U0ZeGgOkzaCH2uGDoT`;
+      return `https://soneium-minato.g.alchemy.com/v2/${apiKey}`;
     default:
       throw new Error("Network not supported");
   }
@@ -145,6 +145,7 @@ var Web3Context = import_react.default.createContext({
   verifyOTPMagic: null,
   isSendingOTP: false,
   isVerifyingOTP: false,
+  isLoggedMagic: false,
   disconnectWallet: async () => {
   },
   magic: null,
@@ -273,7 +274,7 @@ function Web3Provider({
       amount,
       price,
       privateBuyer = []
-    }, overrides) => {
+    }) => {
       if (!marketContract || !nftContract)
         return;
       try {
@@ -284,8 +285,7 @@ function Web3Provider({
           tokenId,
           amount,
           priceInWei,
-          privateBuyer,
-          overrides
+          privateBuyer
         );
         const receipt = await tx.wait();
         return receipt;
@@ -331,60 +331,22 @@ function Web3Provider({
       if (!ethersSigner) {
         throw new Error("Please login first to transfer ETH");
       }
-      const provider = ethersSigner.provider;
-      const from = await ethersSigner.getAddress();
-      const value = import_ethers.ethers.parseEther(amountEth);
-      const feeData = await provider.getFeeData();
-      if (!feeData.maxFeePerGas || !feeData.maxPriorityFeePerGas) {
-        throw new Error("Network does not provide EIP-1559 fee data");
-      }
-      const gasMultiplier = 1.2;
-      const maxFeePerGas = BigInt(
-        Math.floor(Number(feeData.maxFeePerGas) * gasMultiplier)
-      );
-      const maxPriorityFeePerGas = BigInt(
-        Math.floor(Number(feeData.maxPriorityFeePerGas) * gasMultiplier)
-      );
-      let gasLimit = 21000n;
-      try {
-        gasLimit = await provider.estimateGas({ to, value });
-      } catch {
-      }
-      const txRequest = {
+      const { gasLimit, gasPrice, value } = await estimateTransfer(
         to,
-        value,
-        type: 2,
-        // EIP-1559
-        gasLimit,
-        maxFeePerGas,
-        maxPriorityFeePerGas
-        // nonce: bỏ đi, ethers tự quản lý
-      };
+        amountEth
+      );
+      const txRequest = { to, value, gasLimit, gasPrice };
       const tx = await ethersSigner.sendTransaction(txRequest);
-      console.log("Transaction hash:", tx.hash);
-      let receipt;
-      try {
-        receipt = await tx.wait(1, 6e4);
-      } catch (err) {
-        console.warn(
-          "Transaction not mined after 60s. You may retry manually.",
-          err
-        );
-        return tx;
-      }
+      const receipt = await tx.wait();
       if (!receipt || receipt.status !== 1) {
         console.warn(
           "\u26A0\uFE0F Transaction mined nh\u01B0ng kh\xF4ng th\xE0nh c\xF4ng (status !== 1):",
           receipt
         );
-      } else {
-        const egp = receipt?.effectiveGasPrice;
-        const feePaid = egp ? import_ethers.ethers.formatEther((receipt.gasUsed ?? 0n) * egp) : "Unknown";
-        console.log("Fee paid (ETH):", feePaid);
       }
       return receipt;
     },
-    [ethersSigner]
+    [ethersSigner, estimateTransfer]
   );
   (0, import_react.useEffect)(() => {
     if (nftContract && magic) {
@@ -456,6 +418,7 @@ function Web3Provider({
       disconnectWallet,
       verifyOTPMagic,
       isSendingOTP,
+      isLoggedMagic,
       isVerifyingOTP,
       cancelVerify,
       checkLoggedInMagic,
