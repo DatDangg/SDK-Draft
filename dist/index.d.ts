@@ -68,17 +68,11 @@ interface Web3ContextType {
     checkLoggedInMagic: () => Promise<boolean>;
     getUserIdToken: () => Promise<string | null>;
     convertBalance: (value: BigNumberish, fromUnit: EthUnit, toUnit: EthUnit) => string;
-    listNFT: (props: {
-        tokenSell?: string;
-        tokenId: string | bigint | number;
-        amount: string | bigint | number;
-        price: string;
-        privateBuyer?: string[];
-    }, overrides?: {
-        gasLimit?: bigint;
-        gasPrice?: bigint;
-        value?: bigint;
-    }) => Promise<any>;
+    listNFTonMarket: (props: ListNFTonMarketType) => Promise<{
+        listingId: string;
+        txHash: string;
+    }>;
+    delistNFTfromMarket: (tokenId: string | bigint | number) => Promise<string>;
     getEthBalance: () => Promise<{
         address: string;
         balanceEth: string;
@@ -89,6 +83,12 @@ interface Web3ContextType {
         value: bigint;
     }>;
     transferETH: (to: string, amountEth: string) => Promise<ethers.TransactionReceipt | null>;
+    getListNFTGasEstimate: (props: ListNFTonMarketType) => Promise<{
+        gasPrice: bigint | null;
+        totalCost: bigint | null;
+        totalCostInEth: string | null;
+    } | null>;
+    address: string | null;
 }
 type CancelVerifyResult = {
     status: "success";
@@ -98,6 +98,13 @@ type CancelVerifyResult = {
 } | {
     status: "error";
     error: unknown;
+};
+type ListNFTonMarketType = {
+    tokenSell?: string;
+    tokenId: string | bigint | number;
+    amount?: string | bigint | number;
+    price: string;
+    privateBuyer?: string[];
 };
 
 declare const MagicProvider: React.FC<{

@@ -131,20 +131,10 @@ export interface Web3ContextType {
     fromUnit: EthUnit,
     toUnit: EthUnit
   ) => string;
-  listNFT: (
-    props: {
-      tokenSell?: string;
-      tokenId: string | bigint | number;
-      amount: string | bigint | number;
-      price: string;
-      privateBuyer?: string[];
-    },
-    overrides?: {
-      gasLimit?: bigint;
-      gasPrice?: bigint;
-      value?: bigint;
-    }
-  ) => Promise<any>;
+  listNFTonMarket: (
+    props: ListNFTonMarketType
+  ) => Promise<{ listingId: string; txHash: string }>;
+  delistNFTfromMarket: (tokenId: string | bigint | number) => Promise<string>;
   getEthBalance: () => Promise<{ address: string; balanceEth: string }>;
   estimateTransfer: (
     to: string,
@@ -154,9 +144,23 @@ export interface Web3ContextType {
     to: string,
     amountEth: string
   ) => Promise<ethers.TransactionReceipt | null>;
+  getListNFTGasEstimate: (props: ListNFTonMarketType) => Promise<{
+    gasPrice: bigint | null;
+    totalCost: bigint | null;
+    totalCostInEth: string | null;
+  } | null>;
+  address: string | null;
 }
 
 export type CancelVerifyResult =
   | { status: "success" }
   | { status: "no_flow"; reason: "not_initialized" }
   | { status: "error"; error: unknown };
+
+export type ListNFTonMarketType = {
+  tokenSell?: string;
+  tokenId: string | bigint | number;
+  amount?: string | bigint | number;
+  price: string;
+  privateBuyer?: string[];
+};

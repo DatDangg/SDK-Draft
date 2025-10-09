@@ -126,14 +126,17 @@ var Web3Context = React.createContext({
   checkLoggedInMagic: async () => false,
   getUserIdToken: async () => null,
   convertBalance: () => "",
-  listNFT: () => Promise.resolve(),
+  listNFTonMarket: () => Promise.resolve({ listingId: "", txHash: "" }),
+  delistNFTfromMarket: () => Promise.resolve(""),
   getEthBalance: async () => ({ address: "", balanceEth: "0" }),
   estimateTransfer: async () => ({ gasLimit: 0n, gasPrice: 0n, value: 0n }),
   transferETH: async () => {
     throw new Error(
       "Web3Context not initialized: transferETH is unavailable outside Provider"
     );
-  }
+  },
+  getListNFTGasEstimate: async () => Promise.resolve(null),
+  address: null
 });
 var useWeb3 = () => useContext(Web3Context);
 function Web3Provider({
@@ -151,6 +154,7 @@ function Web3Provider({
   const [nftContract, setNftContract] = useState(null);
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
+  const [address, setAddress] = useState(null);
   const {
     magic,
     loginEmailOTP,
@@ -240,17 +244,17 @@ function Web3Provider({
       await logoutMagic();
     }
   }, [magic, logoutMagic]);
-  const listNFT = useCallback(
+  const listNFTonMarket = useCallback(
     async ({
       tokenSell = "0x0000000000000000000000000000000000000000",
       tokenId,
-      amount,
+      amount = 1,
       price,
       privateBuyer = []
     }) => {
-      if (!marketContract || !nftContract)
-        return;
       try {
+        if (!marketContract || !nftContract)
+          throw new Error("Contract not initialized");
         const priceInWei = ethers.parseEther(price);
         const tx = await marketContract.listToken(
           NFTInfo.address,
@@ -261,20 +265,104 @@ function Web3Provider({
           privateBuyer
         );
         const receipt = await tx.wait();
-        return receipt;
+        if (!receipt || receipt.status !== 1) {
+          throw new Error("Error parsing transaction");
+        }
+        const txHash = receipt.hash;
+        const listingId = await parseListingId(receipt);
+        return { listingId, txHash };
       } catch (error) {
-        console.error("\u274C Error listing NFT:", error);
         throw error;
       }
     },
     [marketContract, NFTInfo, nftContract]
   );
+  const delistNFTfromMarket = useCallback(
+    async (tokenId) => {
+      if (!marketContract)
+        throw new Error("Contract not initialized");
+      try {
+        const tx = await marketContract.deleteListing(tokenId);
+        const receipt = await tx.wait();
+        if (!receipt || receipt.status !== 1) {
+          throw new Error("Error passing transaction");
+        }
+        if (!receipt || receipt.status !== 1) {
+          throw new Error("Transaction failed. Please try again.");
+        }
+        return receipt.hash;
+      } catch (error) {
+        throw error;
+      }
+    },
+    [marketContract, NFTInfo]
+  );
+  const getListNFTGasEstimate = useCallback(
+    async (props) => {
+      const {
+        tokenId,
+        price,
+        tokenSell = ethers.ZeroAddress,
+        amount = 1,
+        privateBuyer = []
+      } = props;
+      try {
+        if (!marketContract || !nftContract || !ethersSigner || !ethersProvider || !NFTInfo?.address) {
+          throw new Error("Missing dependencies");
+        }
+        if (!price || Number(price) <= 0)
+          throw new Error("Invalid price");
+        const from = await ethersSigner.getAddress();
+        const priceInWei = ethers.parseEther(price);
+        if ((await nftContract.ownerOf(String(tokenId))).toLowerCase() !== from.toLowerCase()) {
+          throw new Error("Signer is not token owner");
+        }
+        let approved = await nftContract.isApprovedForAll(
+          from,
+          marketContract.target
+        );
+        if (!approved) {
+          const singleApproval = await nftContract.getApproved(String(tokenId)).catch(() => null);
+          approved = singleApproval?.toLowerCase() === String(marketContract.target).toLowerCase();
+        }
+        if (!approved) {
+          await nftContract.approve(marketContract.target, String(tokenId)).catch(
+            () => nftContract.setApprovalForAll(marketContract.target, true)
+          ).then((tx) => tx.wait());
+        }
+        const data = marketContract.interface.encodeFunctionData("listToken", [
+          NFTInfo.address,
+          tokenSell,
+          String(tokenId),
+          amount,
+          priceInWei,
+          privateBuyer
+        ]);
+        const estimatedGas = await ethersProvider.estimateGas({
+          to: marketContract.target,
+          from,
+          data
+        });
+        const gasPrice = (await ethersProvider.getFeeData()).gasPrice;
+        return {
+          // estimatedGas,
+          gasPrice,
+          totalCost: gasPrice ? estimatedGas * gasPrice : null,
+          totalCostInEth: gasPrice ? convertBalance(estimatedGas * gasPrice, "wei", "ether") : null
+        };
+      } catch (error) {
+        console.error("Error estimating gas for listing NFT:", error);
+        return null;
+      }
+    },
+    [marketContract, nftContract, NFTInfo, ethersSigner, ethersProvider]
+  );
   const getEthBalance = useCallback(async () => {
     if (!ethersSigner)
       throw new Error("No signer available. Please login first.");
-    const address = await ethersSigner.getAddress();
-    const balWei = await ethersSigner.provider.getBalance(address);
-    return { address, balanceEth: ethers.formatEther(balWei) };
+    const address2 = await ethersSigner.getAddress();
+    const balWei = await ethersSigner.provider.getBalance(address2);
+    return { address: address2, balanceEth: ethers.formatEther(balWei) };
   }, [ethersSigner]);
   const estimateTransfer = useCallback(
     async (to, amountEth) => {
@@ -304,23 +392,73 @@ function Web3Provider({
       if (!ethersSigner) {
         throw new Error("Please login first to transfer ETH");
       }
-      const { gasLimit, gasPrice, value } = await estimateTransfer(
-        to,
-        amountEth
+      const provider = ethersSigner.provider;
+      const from = await ethersSigner.getAddress();
+      const value = ethers.parseEther(amountEth);
+      const feeData = await provider.getFeeData();
+      if (!feeData.maxFeePerGas || !feeData.maxPriorityFeePerGas) {
+        throw new Error("Network does not provide EIP-1559 fee data");
+      }
+      const gasMultiplier = 1.2;
+      const maxFeePerGas = BigInt(
+        Math.floor(Number(feeData.maxFeePerGas) * gasMultiplier)
       );
-      const txRequest = { to, value, gasLimit, gasPrice };
+      const maxPriorityFeePerGas = BigInt(
+        Math.floor(Number(feeData.maxPriorityFeePerGas) * gasMultiplier)
+      );
+      let gasLimit = 21000n;
+      try {
+        gasLimit = await provider.estimateGas({ to, value });
+      } catch {
+      }
+      const txRequest = {
+        to,
+        value,
+        type: 2,
+        // EIP-1559
+        gasLimit,
+        maxFeePerGas,
+        maxPriorityFeePerGas
+      };
       const tx = await ethersSigner.sendTransaction(txRequest);
-      const receipt = await tx.wait();
+      console.log("Transaction hash:", tx.hash);
+      let receipt;
+      try {
+        receipt = await tx.wait(1, 6e4);
+      } catch (err) {
+        console.warn(
+          "Transaction not mined after 60s. You may retry manually.",
+          err
+        );
+        return tx;
+      }
       if (!receipt || receipt.status !== 1) {
         console.warn(
           "\u26A0\uFE0F Transaction mined nh\u01B0ng kh\xF4ng th\xE0nh c\xF4ng (status !== 1):",
           receipt
         );
+      } else {
+        const egp = receipt?.effectiveGasPrice;
+        const feePaid = egp ? ethers.formatEther((receipt.gasUsed ?? 0n) * egp) : "Unknown";
+        console.log("Fee paid (ETH):", feePaid);
       }
       return receipt;
     },
-    [ethersSigner, estimateTransfer]
+    [ethersSigner]
   );
+  async function parseListingId(receipt) {
+    const iface = new ethers.Interface(MarketPlaceInfo.abi);
+    for (const log of receipt.logs) {
+      try {
+        const parsedLog = iface.parseLog(log);
+        if (parsedLog && parsedLog.name === "TokenListed") {
+          return parsedLog.args.listingId.toString();
+        }
+      } catch (err) {
+        throw new Error("Failed to parse logs from transaction receipt");
+      }
+    }
+  }
   useEffect(() => {
     if (nftContract && magic) {
       const checkApprovedContract = async () => {
@@ -355,6 +493,8 @@ function Web3Provider({
         setEtherSigner(signer);
         setMarketContract(marketContract2);
         setNftContract(nftContract2);
+        const localAddress = await signer.getAddress();
+        setAddress(localAddress);
       };
       checkEthers();
     }
@@ -376,10 +516,13 @@ function Web3Provider({
       checkLoggedInMagic,
       getUserIdToken,
       convertBalance,
-      listNFT,
+      listNFTonMarket,
+      delistNFTfromMarket,
       getEthBalance,
       estimateTransfer,
-      transferETH
+      transferETH,
+      getListNFTGasEstimate,
+      address
     }),
     [
       magic,
@@ -397,10 +540,13 @@ function Web3Provider({
       checkLoggedInMagic,
       getUserIdToken,
       convertBalance,
-      listNFT,
+      listNFTonMarket,
+      delistNFTfromMarket,
       getEthBalance,
       estimateTransfer,
-      transferETH
+      transferETH,
+      getListNFTGasEstimate,
+      address
     ]
   );
   return /* @__PURE__ */ jsx(Web3Context.Provider, { value: values, children });

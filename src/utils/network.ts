@@ -53,7 +53,7 @@ export const getNetworkUrl = (network: string, apiKey?: string) => {
       return "https://zksync-era-sepolia.blockpi.network/v1/rpc/public";
     case Network.SONEIUM:
       return `https://soneium-minato.g.alchemy.com/v2/${apiKey}`;
-      // return `https://soneium-minato.rpc.scs.startale.com?apikey=${apiKey}`;
+    // return `https://soneium-minato.rpc.scs.startale.com?apikey=${apiKey}`;
     default:
       throw new Error("Network not supported");
   }
